@@ -1,0 +1,10 @@
+Package: applist
+Name: AppList
+Depends: mobilesubstrate
+Version: 0.1
+Architecture: iphoneos-arm
+Description: App list library for developers
+Maintainer: Ryan Petrich (rpetrich@gmail.com)
+Author: Ryan Petrich (rpetrich@gmail.com)
+Depends: mobilesubstrate, firmware (>= 3.0)
+Section: System
