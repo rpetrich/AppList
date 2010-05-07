@@ -5,19 +5,23 @@
 @interface ALApplicationTableDataSource : NSObject <UITableViewDataSource> {
 @private
 	ALApplicationList *appList;
-	NSArray *displayIdentifiers[2];
-	NSArray *displayNames[2];
-	CGSize iconSize;
-	Class cellClass;
+	NSArray *_sectionDescriptors;
+	NSMutableArray *_displayIdentifiers;
+	NSMutableArray *_displayNames;
 }
 
-+ (id)dataSource;
++ (NSArray *)standardSectionDescriptors;
 
++ (id)dataSource;
 - (id)init;
 
-@property (nonatomic, assign) CGSize iconSize;
-@property (nonatomic, assign) Class cellClass;
+@property (nonatomic, copy) NSArray *sectionDescriptors;
 
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 
 @end
+
+extern const NSString *ALSectionDescriptorTitleKey;
+extern const NSString *ALSectionDescriptorPredicateKey;
+extern const NSString *ALSectionDescriptorCellClassNameKey;
+extern const NSString *ALSectionDescriptorIconSizeKey;

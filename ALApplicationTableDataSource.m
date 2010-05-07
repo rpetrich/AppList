@@ -5,12 +5,36 @@
 #import <UIKit/UIKit2.h>
 #import <CoreGraphics/CoreGraphics.h>
 
+const NSString *ALSectionDescriptorTitleKey = @"title";
+const NSString *ALSectionDescriptorPredicateKey = @"predicate";
+const NSString *ALSectionDescriptorCellClassNameKey = @"cell-class-name";
+const NSString *ALSectionDescriptorIconSizeKey = @"icon-size";
+
 static NSInteger DictionaryTextComparator(id a, id b, void *context)
 {
 	return [[(NSDictionary *)context objectForKey:a] localizedCaseInsensitiveCompare:[(NSDictionary *)context objectForKey:b]];
 }
 
 @implementation ALApplicationTableDataSource
+
++ (NSArray *)standardSectionDescriptors
+{
+	NSNumber *iconSize = [NSNumber numberWithUnsignedInteger:ALApplicationIconSizeSmall];
+	return [NSArray arrayWithObjects:
+		[NSDictionary dictionaryWithObjectsAndKeys:
+			@"System Applications", ALSectionDescriptorTitleKey,
+			@"isSystemApplication = TRUE", ALSectionDescriptorPredicateKey,
+			@"UITableViewCell", ALSectionDescriptorCellClassNameKey,
+			iconSize, ALSectionDescriptorIconSizeKey,
+		nil],
+		[NSDictionary dictionaryWithObjectsAndKeys:
+			@"User Applications", ALSectionDescriptorTitleKey,
+			@"isSystemApplication = FALSE", ALSectionDescriptorPredicateKey,
+			@"UITableViewCell", ALSectionDescriptorCellClassNameKey,
+			iconSize, ALSectionDescriptorIconSizeKey,
+		nil],
+	nil];
+}
 
 + (id)dataSource
 {
@@ -21,68 +45,84 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 {
 	if ((self = [super init])) {
 		appList = [[ALApplicationList sharedApplicationList] retain];
-		NSDictionary *systemApps = [appList systemApplications];
-		displayIdentifiers[0] = [[[systemApps allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:systemApps] retain];
-		NSMutableArray *namesTemp = [[NSMutableArray alloc] init];
-		for (NSString *displayId in displayIdentifiers[0])
-			[namesTemp addObject:[systemApps objectForKey:displayId]];
-		displayNames[0] = [namesTemp copy];
-		NSDictionary *userApps = [appList userApplications];
-		displayIdentifiers[1] = [[[userApps allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:userApps] retain];
-		[namesTemp removeAllObjects];
-		for (NSString *displayId in displayIdentifiers[1])
-			[namesTemp addObject:[userApps objectForKey:displayId]];
-		displayNames[1] = [namesTemp copy];
-		[namesTemp release];
-		cellClass = [UITableViewCell class];
+		_displayIdentifiers = [[NSMutableArray alloc] init];
+		_displayNames = [[NSMutableArray alloc] init];
 	}
 	return self;
 }
 
 - (void)dealloc
 {
-	[displayIdentifiers[0] release];
-	[displayIdentifiers[1] release];
-	[displayNames[0] release];
-	[displayNames[1] release];
+	[_displayIdentifiers release];
+	[_displayNames release];
 	[appList release];
 	[super dealloc];
 }
 
-@synthesize iconSize, cellClass;
+@synthesize sectionDescriptors = _sectionDescriptors;
+
+- (void)setSectionDescriptors:(NSArray *)sectionDescriptors
+{
+	[_displayIdentifiers removeAllObjects];
+	[_displayNames removeAllObjects];
+	for (NSDictionary *descriptor in sectionDescriptors) {
+		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+		NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
+		NSDictionary *applications;
+		if (predicateText)
+			applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
+		else
+			applications = [appList applications];
+		NSArray *displayIdentifiers = [[applications allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:applications];
+		[_displayIdentifiers addObject:displayIdentifiers];
+		NSMutableArray *displayNames = [[NSMutableArray alloc] init];
+		for (NSString *displayId in displayIdentifiers)
+			[displayNames addObject:[applications objectForKey:displayId]];
+		[_displayNames addObject:displayNames];
+		[displayNames release];
+		[pool release];
+	}
+	[_sectionDescriptors release];
+	_sectionDescriptors = [sectionDescriptors copy];
+}
 
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath
 {
-	return [displayIdentifiers[[indexPath section]] objectAtIndex:[indexPath row]];
+	return [[_displayIdentifiers objectAtIndex:[indexPath section]] objectAtIndex:[indexPath row]];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-	return 2;
+	return [_sectionDescriptors count];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-	return (section == 0) ? @"System Applications" : @"User Applications";
+	return [[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorTitleKey];
 }
 
 - (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section
 {
-	return [displayIdentifiers[section] count];
+	return [[_displayIdentifiers objectAtIndex:section] count];
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"applicationCell"] ?: [[[cellClass alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"applicationCell"] autorelease];
 	NSUInteger section = [indexPath section];
 	NSUInteger row = [indexPath row];
-	cell.textLabel.text = [displayNames[section] objectAtIndex:row];
-	if (iconSize.width <= 0.0f || iconSize.height <= 0.0f)
+	NSDictionary *sectionDescriptor = [_sectionDescriptors objectAtIndex:section];
+	NSString *cellClassName = [sectionDescriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell";
+	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellClassName] ?: [[[NSClassFromString(cellClassName) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellClassName] autorelease];
+	cell.textLabel.text = [[_displayNames objectAtIndex:section] objectAtIndex:row];
+	CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
+	if (iconSize <= 0.0f)
 		cell.imageView.image = nil;
 	else {
-		NSUInteger max = (iconSize.width > iconSize.height) ? iconSize.width : iconSize.height;
-		UIImage *originalImage = [appList iconOfSize:max forDisplayIdentifier:[displayIdentifiers[section] objectAtIndex:row]];
-		cell.imageView.image = [originalImage _imageScaledToSize:iconSize interpolationQuality:kCGInterpolationDefault];
+		UIImage *image = [appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]];
+		CGSize currentSize = [image size];
+		if (currentSize.width != iconSize || currentSize.height != iconSize)
+			image = [image _imageScaledToSize:CGSizeMake(iconSize, iconSize) interpolationQuality:kCGInterpolationDefault];
+		cell.imageView.image = image;
 	}
 	return cell;
 }

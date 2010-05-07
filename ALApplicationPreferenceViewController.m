@@ -1,5 +1,7 @@
 #import "ALApplicationTableDataSource.h"
 
+#import "ALApplicationList.h"
+
 #import <Preferences/Preferences.h>
 
 #include <notify.h>
@@ -38,8 +40,6 @@ __attribute__((visibility("hidden")))
 	id<ALValueCellDelegate> _delegate;
 }
 
-+ (BOOL)allowsSelection;
-
 @property (nonatomic, assign) id<ALValueCellDelegate> delegate;
 
 - (void)loadValue:(id)value;
@@ -55,11 +55,6 @@ __attribute__((visibility("hidden")))
 @end
 
 @implementation ALValueCell
-
-+ (BOOL)allowsSelection
-{
-	return YES;
-}
 
 @synthesize delegate;
 
@@ -98,8 +93,10 @@ __attribute__((visibility("hidden")))
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
 	id cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-	[cell setDelegate:self];
-	[cell loadValue:[_controller valueForCellAtIndexPath:indexPath]];
+	if ([cell isKindOfClass:[ALValueCell class]]) {
+		[cell setDelegate:self];
+		[cell loadValue:[_controller valueForCellAtIndexPath:indexPath]];
+	}
 	return cell;
 }
 
@@ -125,11 +122,6 @@ __attribute__((visibility("hidden")))
 @end
 
 @implementation ALSwitchCell
-
-+ (BOOL)allowsSelection
-{
-	return NO;
-}
 
 - (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
 {
@@ -233,11 +225,25 @@ __attribute__((visibility("hidden")))
 - (void)loadFromSpecifier:(PSSpecifier *)specifier
 {
 	[self setNavigationTitle:[specifier propertyForKey:@"ALNavigationTitle"] ?: [specifier name]];
-	id temp = [specifier propertyForKey:@"ALIconSize"];
-	CGSize size;
-	size.width = temp ? [temp floatValue] : 29.0f;
-	size.height = size.width;
-	[_dataSource setIconSize:size];
+	NSArray *descriptors = [specifier propertyForKey:@"ALSectionDescriptors"];
+	if (!descriptors) {
+		NSNumber *iconSize = [NSNumber numberWithUnsignedInteger:ALApplicationIconSizeSmall];
+		descriptors = [NSArray arrayWithObjects:
+			[NSDictionary dictionaryWithObjectsAndKeys:
+				@"System Applications", ALSectionDescriptorTitleKey,
+				@"isSystemApplication = TRUE", ALSectionDescriptorPredicateKey,
+				@"ALSwitchCell", ALSectionDescriptorCellClassNameKey,
+				iconSize, ALSectionDescriptorIconSizeKey,
+			nil],
+			[NSDictionary dictionaryWithObjectsAndKeys:
+				@"User Applications", ALSectionDescriptorTitleKey,
+				@"isSystemApplication = FALSE", ALSectionDescriptorPredicateKey,
+				@"ALSwitchCell", ALSectionDescriptorCellClassNameKey,
+				iconSize, ALSectionDescriptorIconSizeKey,
+			nil],
+		nil];
+	}
+	[_dataSource setSectionDescriptors:descriptors];
 	[settingsDefaultValue release];
 	settingsDefaultValue = [[specifier propertyForKey:@"ALSettingsDefaultValue"] retain];
 	[settingsPath release];
@@ -245,11 +251,9 @@ __attribute__((visibility("hidden")))
 	[settingsKeyPrefix release];
 	settingsKeyPrefix = [[specifier propertyForKey:@"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
 	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
-	Class cellClass = NSClassFromString([specifier propertyForKey:@"ALCellClass"]) ?: [ALSwitchCell class];
-	[_dataSource setCellClass:cellClass];
-	[_tableView setAllowsSelection:[cellClass allowsSelection]];
 	[settingsChangeNotification release];
 	settingsChangeNotification = [[specifier propertyForKey:@"ALChangeNotification"] retain];
+	[_tableView setAllowsSelection:[[specifier propertyForKey:@"ALAllowsSelection"] boolValue]];
 	[_tableView reloadData];
 }
 

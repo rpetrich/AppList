@@ -49,14 +49,13 @@ static ALApplicationList *sharedApplicationList;
 	return [messagingCenter sendMessageAndReceiveReplyName:@"applications" userInfo:nil];
 }
 
-- (NSDictionary *)userApplications
+- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
-	return [messagingCenter sendMessageAndReceiveReplyName:@"userApplications" userInfo:nil];
-}
-
-- (NSDictionary *)systemApplications
-{
-	return [messagingCenter sendMessageAndReceiveReplyName:@"systemApplications" userInfo:nil];
+	if (!predicate)
+		return [self applications];
+	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:predicate];
+	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:data forKey:@"predicate"];
+	return [messagingCenter sendMessageAndReceiveReplyName:@"_remoteApplicationsFilteredForMessage:userInfo:" userInfo:userInfo];
 }
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
@@ -101,8 +100,7 @@ CHDeclareClass(SBIconModel);
 		CPDistributedMessagingCenter *center = [self messagingCenter];
 		[center runServerOnCurrentThread];
 		[center registerForMessageName:@"applications" target:self selector:@selector(applications)];
-		[center registerForMessageName:@"userApplications" target:self selector:@selector(userApplications)];
-		[center registerForMessageName:@"systemApplications" target:self selector:@selector(systemApplications)];
+		[center registerForMessageName:@"_remoteApplicationsFilteredForMessage:userInfo:" target:self selector:@selector(_remoteApplicationsFilteredForMessage:userInfo:)];
 		[center registerForMessageName:@"_remoteGetIconForMessage:userInfo:" target:self selector:@selector(_remoteGetIconForMessage:userInfo:)];
 	}
 	return self;
@@ -116,21 +114,20 @@ CHDeclareClass(SBIconModel);
 	return result;
 }
 
-- (NSDictionary *)userApplications
+- (NSDictionary *)_remoteApplicationsFilteredForMessage:(NSString *)message userInfo:(NSDictionary *)userInfo
 {
-	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
-		if (![app isSystemApplication])
-			[result setObject:[app displayName] forKey:[app displayIdentifier]];
-	return result;
+	NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:[userInfo objectForKey:@"predicate"]];
+	return [self applicationsFilteredUsingPredicate:predicate];
 }
 
-- (NSDictionary *)systemApplications
+- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
-		if ([app isSystemApplication])
-			[result setObject:[app displayName] forKey:[app displayIdentifier]];
+	NSArray *apps = [CHSharedInstance(SBApplicationController) allApplications];
+	if (predicate)
+		apps = [apps filteredArrayUsingPredicate:predicate];
+	for (SBApplication *app in apps)
+		[result setObject:[app displayName] forKey:[app displayIdentifier]];
 	return result;
 }
 
