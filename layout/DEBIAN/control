@@ -4,8 +4,8 @@ Depends: mobilesubstrate
 Version: 1.0
 Architecture: iphoneos-arm
 Description: App list library for developers
-Maintainer: Ryan Petrich (rpetrich@gmail.com)
-Author: Ryan Petrich (rpetrich@gmail.com)
+Maintainer: Ryan Petrich <rpetrich@gmail.com>
+Author: Ryan Petrich <rpetrich@gmail.com>
 Depends: mobilesubstrate, firmware (>= 3.0)
 Section: System
 Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=AppListDp
