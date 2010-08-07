@@ -120,8 +120,17 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	else {
 		UIImage *image = [appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]];
 		CGSize currentSize = [image size];
-		if (currentSize.width != iconSize || currentSize.height != iconSize)
-			image = [image _imageScaledToSize:CGSizeMake(iconSize, iconSize) interpolationQuality:kCGInterpolationDefault];
+		if (currentSize.width != iconSize || currentSize.height != iconSize) {
+			CGRect rect;
+			rect.origin.x = 0.0f;
+			rect.origin.y = 0.0f;
+			rect.size.width = iconSize;
+			rect.size.height = iconSize;
+			UIGraphicsBeginImageContext(rect.size);
+			[image drawInRect:rect];
+			image = UIGraphicsGetImageFromCurrentImageContext();
+			UIGraphicsEndImageContext();
+		}
 		cell.imageView.image = image;
 	}
 	return cell;

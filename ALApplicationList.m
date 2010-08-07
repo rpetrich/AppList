@@ -6,6 +6,10 @@
 #import <CaptainHook/CaptainHook.h>
 #import <AppSupport/AppSupport.h>
 
+@interface SBIconModel ()
+- (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
+@end
+
 @interface ALApplicationList ()
 
 @property (nonatomic, readonly) CPDistributedMessagingCenter *messagingCenter;
@@ -147,7 +151,14 @@ CHDeclareClass(SBIconModel);
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	SBIcon *icon = [CHSharedInstance(SBIconModel) iconForDisplayIdentifier:displayIdentifier];
+	SBIcon *icon;
+	SBIconModel *iconModel = CHSharedInstance(SBIconModel);
+	if ([iconModel respondsToSelector:@selector(applicationIconForDisplayIdentifier:)])
+		icon = [iconModel applicationIconForDisplayIdentifier:displayIdentifier];
+	else if ([iconModel respondsToSelector:@selector(iconForDisplayIdentifier:)])
+		icon = [iconModel iconForDisplayIdentifier:displayIdentifier];
+	else
+		return NULL;
 	BOOL getIconImage = [icon respondsToSelector:@selector(getIconImage:)];
 	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
 	UIImage *image;
