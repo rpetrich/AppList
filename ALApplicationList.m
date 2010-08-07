@@ -35,6 +35,8 @@ static ALApplicationList *sharedApplicationList;
 	if ((self = [super init])) {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 		messagingCenter = [[CPDistributedMessagingCenter centerNamed:@"applist.springboardCenter"] retain];
+		cachedIcons = [[NSMutableDictionary alloc] init];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveMemoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
 		[pool drain];
 	}
 	return self;
@@ -44,8 +46,15 @@ static ALApplicationList *sharedApplicationList;
 
 - (void)dealloc
 {
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
+	[cachedIcons release];
 	[messagingCenter release];
 	[super dealloc];
+}
+
+- (void)didReceiveMemoryWarning
+{
+	[cachedIcons removeAllObjects];
 }
 
 - (NSDictionary *)applications
@@ -64,13 +73,19 @@ static ALApplicationList *sharedApplicationList;
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
+	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", iconSize];
+	CGImageRef result = (CGImageRef)[cachedIcons objectForKey:key];
+	if (result)
+		return CGImageRetain(result);
 	NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil];
 	NSDictionary *serialized = [messagingCenter sendMessageAndReceiveReplyName:@"_remoteGetIconForMessage:userInfo:" userInfo:userInfo];
 	NSData *data = [serialized objectForKey:@"result"];
 	if (!data)
 		return NULL;
 	CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)data, NULL);
-	CGImageRef result = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+	result = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+	if (result)
+		[cachedIcons setObject:(id)result forKey:key];
 	CFRelease(imageSource);
 	return result;
 }
