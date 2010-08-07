@@ -112,27 +112,27 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	NSUInteger row = [indexPath row];
 	NSDictionary *sectionDescriptor = [_sectionDescriptors objectAtIndex:section];
 	NSString *cellClassName = [sectionDescriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell";
-	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellClassName] ?: [[[NSClassFromString(cellClassName) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellClassName] autorelease];
+	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellClassName];
+	if (!cell) {
+		cell = [[[NSClassFromString(cellClassName) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellClassName] autorelease];
+		cell.indentationLevel = 1;
+		[cell.contentView.layer addSublayer:[CALayer layer]];
+	}
 	cell.textLabel.text = [[_displayNames objectAtIndex:section] objectAtIndex:row];
 	CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
-	if (iconSize <= 0.0f)
-		cell.imageView.image = nil;
-	else {
-		UIImage *image = [appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]];
-		CGSize currentSize = [image size];
-		if (currentSize.width != iconSize || currentSize.height != iconSize) {
-			CGRect rect;
-			rect.origin.x = 0.0f;
-			rect.origin.y = 0.0f;
-			rect.size.width = iconSize;
-			rect.size.height = iconSize;
-			UIGraphicsBeginImageContext(rect.size);
-			[image drawInRect:rect];
-			image = UIGraphicsGetImageFromCurrentImageContext();
-			UIGraphicsEndImageContext();
-		}
-		cell.imageView.image = image;
-	}
+	cell.indentationWidth = iconSize + 8.0f;
+	CALayer *contentLayer = cell.contentView.layer;
+	CALayer *imageLayer = [contentLayer.sublayers objectAtIndex:0];
+	CGRect frame;
+	frame.origin.x = 8.0f;
+	frame.origin.y = (contentLayer.bounds.size.height - iconSize) * 0.5f;
+	frame.size.width = iconSize;
+	frame.size.height = iconSize;
+	imageLayer.frame = frame;
+	if (iconSize > 0.0f)
+		imageLayer.contents = (id)[[appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]] CGImage];
+	else
+		imageLayer.contents = nil;
 	return cell;
 }
 

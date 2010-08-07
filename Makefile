@@ -7,7 +7,7 @@ else
 
 LIBRARY_NAME = libapplist
 libapplist_OBJC_FILES = ALApplicationList.m ALApplicationTableDataSource.m
-libapplist_FRAMEWORKS = UIKit CoreGraphics
+libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
 libapplist_PRIVATE_FRAMEWORKS = AppSupport ImageIO
 
 BUNDLE_NAME = AppList
