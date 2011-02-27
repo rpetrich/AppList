@@ -10,6 +10,10 @@
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
 @end
 
+@interface UIImage (iOS40)
++ (UIImage *)imageWithCGImage:(CGImageRef)imageRef scale:(CGFloat)scale orientation:(int)orientation;
+@end
+
 @interface ALApplicationList ()
 
 @property (nonatomic, readonly) CPDistributedMessagingCenter *messagingCenter;
@@ -95,7 +99,13 @@ static ALApplicationList *sharedApplicationList;
 	CGImageRef image = [self copyIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
 	if (!image)
 		return nil;
-	UIImage *result = [UIImage imageWithCGImage:image];
+	UIImage *result;
+	if ([UIImage respondsToSelector:@selector(imageWithCGImage:scale:orientation:)]) {
+		CGFloat scale = (CGImageGetWidth(image) + CGImageGetHeight(image)) / (CGFloat)(iconSize + iconSize);
+		result = [UIImage imageWithCGImage:image scale:scale orientation:0];
+	} else {
+		result = [UIImage imageWithCGImage:image];
+	}
 	CGImageRelease(image);
 	return result;
 }
