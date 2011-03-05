@@ -115,24 +115,13 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellClassName];
 	if (!cell) {
 		cell = [[[NSClassFromString(cellClassName) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellClassName] autorelease];
-		cell.indentationLevel = 1;
-		[cell.contentView.layer addSublayer:[CALayer layer]];
 	}
 	cell.textLabel.text = [[_displayNames objectAtIndex:section] objectAtIndex:row];
 	CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
-	cell.indentationWidth = iconSize + 8.0f;
-	CALayer *contentLayer = cell.contentView.layer;
-	CALayer *imageLayer = [contentLayer.sublayers objectAtIndex:0];
-	CGRect frame;
-	frame.origin.x = 8.0f;
-	frame.origin.y = (contentLayer.bounds.size.height - iconSize) * 0.5f;
-	frame.size.width = iconSize;
-	frame.size.height = iconSize;
-	imageLayer.frame = frame;
-	if (iconSize > 0.0f)
-		imageLayer.contents = (id)[[appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]] CGImage];
+	if (iconSize > 0)
+		cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]];
 	else
-		imageLayer.contents = nil;
+		cell.imageView.image = nil;
 	return cell;
 }
 
