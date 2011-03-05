@@ -1,6 +1,6 @@
 Package: applist
 Name: AppList
-Version: 1.1.0-1
+Version: 1.1.1
 Architecture: iphoneos-arm
 Description: App list library for developers
 Maintainer: Ryan Petrich <rpetrich@gmail.com>
