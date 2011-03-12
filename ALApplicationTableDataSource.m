@@ -53,6 +53,8 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 
 - (void)dealloc
 {
+	[[NSNotificationCenter defaultCenter] removeObserver:self];
+	[_tableView release];
 	[_displayIdentifiers release];
 	[_displayNames release];
 	[appList release];
@@ -60,6 +62,7 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 }
 
 @synthesize sectionDescriptors = _sectionDescriptors;
+@synthesize tableView = _tableView;
 
 - (void)setSectionDescriptors:(NSArray *)sectionDescriptors
 {
@@ -106,6 +109,26 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	return [[_displayIdentifiers objectAtIndex:section] count];
 }
 
+- (void)loadIconsFromBackground
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	OSSpinLockLock(&spinLock);
+	while ([_iconsToLoad count]) {
+		NSDictionary *userInfo = [[_iconsToLoad objectAtIndex:0] retain];
+		[_iconsToLoad removeObjectAtIndex:0];
+		OSSpinLockUnlock(&spinLock);
+		CGImageRelease([appList copyIconOfSize:[[userInfo objectForKey:ALIconSizeKey] integerValue] forDisplayIdentifier:[userInfo objectForKey:ALDisplayIdentifierKey]]);
+		[userInfo release];
+		[pool drain];
+		pool = [[NSAutoreleasePool alloc] init];
+		OSSpinLockLock(&spinLock);
+	}
+	[_iconsToLoad release];
+	_iconsToLoad = nil;
+	OSSpinLockUnlock(&spinLock);
+	[pool drain];
+}
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
 	NSUInteger section = [indexPath section];
@@ -118,11 +141,56 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	}
 	cell.textLabel.text = [[_displayNames objectAtIndex:section] objectAtIndex:row];
 	CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
-	if (iconSize > 0)
-		cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:[[_displayIdentifiers objectAtIndex:section] objectAtIndex:row]];
-	else
+	if (iconSize > 0) {
+		NSString *displayIdentifier = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
+		if (_tableView == nil || [appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier])
+			cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+		else {
+			cell.indentationWidth = iconSize + 7.0f;
+			cell.indentationLevel = 1;
+			cell.imageView.image = nil;
+			NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+			                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
+			                          displayIdentifier, ALDisplayIdentifierKey,
+			                          nil];
+			OSSpinLockLock(&spinLock);
+			if (_iconsToLoad)
+				[_iconsToLoad addObject:userInfo];
+			else {
+				[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
+				_iconsToLoad = [[NSMutableArray alloc] initWithObjects:userInfo, nil];
+				[self performSelectorInBackground:@selector(loadIconsFromBackground) withObject:nil];
+			}
+			OSSpinLockUnlock(&spinLock);
+		}
+	} else {
 		cell.imageView.image = nil;
+	}
 	return cell;
+}
+
+- (void)iconLoadedFromNotification:(NSNotification *)notification
+{
+	NSDictionary *userInfo = notification.userInfo;
+	NSString *displayIdentifier = [userInfo objectForKey:ALDisplayIdentifierKey];
+	NSInteger section = [_displayIdentifiers count];
+	while (section) {
+		section--;
+		NSUInteger row = [[_displayIdentifiers objectAtIndex:section] indexOfObject:displayIdentifier];
+		if (row != NSNotFound) {
+			NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:section];
+			if ([_tableView.indexPathsForVisibleRows containsObject:indexPath]) {
+				UITableViewCell *cell = [_tableView cellForRowAtIndexPath:indexPath];
+				NSInteger iconSize = [[userInfo objectForKey:ALIconSizeKey] integerValue];
+				cell.indentationLevel = 0;
+				cell.indentationWidth = 10.0f;
+				cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+				[cell setNeedsLayout];
+			}
+		}
+	}
+	if (!_iconsToLoad)
+		[[NSNotificationCenter defaultCenter] removeObserver:self name:ALIconLoadedNotification object:nil];
 }
 
 @end

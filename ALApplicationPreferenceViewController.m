@@ -35,20 +35,18 @@ __attribute__((visibility("hidden")))
 @interface ALPreferencesTableDataSource : ALApplicationTableDataSource<ALValueCellDelegate> {
 @private
 	ALApplicationPreferenceViewController *_controller;
-	UITableView *_tableView;
 }
 
-- (id)initWithController:(ALApplicationPreferenceViewController *)controller tableView:(UITableView *)tableView;
+- (id)initWithController:(ALApplicationPreferenceViewController *)controller;
 
 @end
 
 @implementation ALPreferencesTableDataSource
 
-- (id)initWithController:(ALApplicationPreferenceViewController *)controller tableView:(UITableView *)tableView
+- (id)initWithController:(ALApplicationPreferenceViewController *)controller
 {
 	if ((self = [super init])) {
 		_controller = controller;
-		_tableView = tableView;
 	}
 	return self;
 }
@@ -65,7 +63,7 @@ __attribute__((visibility("hidden")))
 
 - (void)valueCell:(ALValueCell *)valueCell didChangeToValue:(id)newValue
 {
-	[_controller cellAtIndexPath:[_tableView indexPathForCell:valueCell] didChangeToValue:newValue];
+	[_controller cellAtIndexPath:[self.tableView indexPathForCell:valueCell] didChangeToValue:newValue];
 }
 
 @end
@@ -87,10 +85,11 @@ __attribute__((visibility("hidden")))
 		frame.origin = CGPointZero;
 		frame.size = size;
 		_tableView = [[UITableView alloc] initWithFrame:frame style:UITableViewStyleGrouped];
-		_dataSource = [[ALPreferencesTableDataSource alloc] initWithController:self tableView:_tableView];
+		_dataSource = [[ALPreferencesTableDataSource alloc] initWithController:self];
 		[_tableView setDataSource:_dataSource];
 		[_tableView setDelegate:self];
 		[_tableView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
+		_dataSource.tableView = _tableView;
 	}
 	return self;
 }
@@ -100,6 +99,7 @@ __attribute__((visibility("hidden")))
 	[_tableView setDelegate:nil];
 	[_tableView setDataSource:nil];
 	[_tableView release];
+	_dataSource.tableView = nil;
 	[_dataSource release];
 	[settingsDefaultValue release];
 	[settingsPath release];

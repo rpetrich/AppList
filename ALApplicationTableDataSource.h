@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <libkern/OSAtomic.h>
 
 @class ALApplicationList;
 
@@ -8,6 +9,9 @@
 	NSArray *_sectionDescriptors;
 	NSMutableArray *_displayIdentifiers;
 	NSMutableArray *_displayNames;
+	NSMutableArray *_iconsToLoad;
+	OSSpinLock spinLock;
+	UITableView *_tableView;
 }
 
 + (NSArray *)standardSectionDescriptors;
@@ -16,6 +20,7 @@
 - (id)init;
 
 @property (nonatomic, copy) NSArray *sectionDescriptors;
+@property (nonatomic, retain) UITableView *tableView;
 
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 
