@@ -6,6 +6,11 @@
 #import <CaptainHook/CaptainHook.h>
 #import <AppSupport/AppSupport.h>
 
+NSString *const ALIconLoadedNotification = @"ALIconLoadedNotification";
+NSString *const ALDisplayIdentifierKey = @"ALDisplayIdentifier";
+NSString *const ALIconSizeKey = @"ALIconSize";
+
+
 @interface SBIconModel ()
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
 @end
@@ -58,7 +63,9 @@ static ALApplicationList *sharedApplicationList;
 
 - (void)didReceiveMemoryWarning
 {
+	OSSpinLockLock(&spinLock);
 	[cachedIcons removeAllObjects];
+	OSSpinLockUnlock(&spinLock);
 }
 
 - (NSDictionary *)applications
@@ -75,12 +82,22 @@ static ALApplicationList *sharedApplicationList;
 	return [messagingCenter sendMessageAndReceiveReplyName:@"_remoteApplicationsFilteredForMessage:userInfo:" userInfo:userInfo];
 }
 
+- (void)postNotificationWithUserInfo:(NSDictionary *)userInfo
+{
+	[[NSNotificationCenter defaultCenter] postNotificationName:ALIconLoadedNotification object:self userInfo:userInfo];
+}
+
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
 	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", iconSize];
+	OSSpinLockLock(&spinLock);
 	CGImageRef result = (CGImageRef)[cachedIcons objectForKey:key];
-	if (result)
-		return CGImageRetain(result);
+	if (result) {
+		result = CGImageRetain(result);
+		OSSpinLockUnlock(&spinLock);
+		return result;
+	}
+	OSSpinLockUnlock(&spinLock);
 	NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil];
 	NSDictionary *serialized = [messagingCenter sendMessageAndReceiveReplyName:@"_remoteGetIconForMessage:userInfo:" userInfo:userInfo];
 	NSData *data = [serialized objectForKey:@"result"];
@@ -88,8 +105,19 @@ static ALApplicationList *sharedApplicationList;
 		return NULL;
 	CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)data, NULL);
 	result = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-	if (result)
+	if (result) {
+		OSSpinLockLock(&spinLock);
 		[cachedIcons setObject:(id)result forKey:key];
+		OSSpinLockUnlock(&spinLock);
+		NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+		                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
+		                          displayIdentifier, ALDisplayIdentifierKey,
+		                          nil];
+		if ([NSThread isMainThread])
+			[self postNotificationWithUserInfo:userInfo];
+		else
+			[self performSelectorOnMainThread:@selector(postNotificationWithUserInfo:) withObject:userInfo waitUntilDone:YES];
+	}
 	CFRelease(imageSource);
 	return result;
 }
@@ -108,6 +136,15 @@ static ALApplicationList *sharedApplicationList;
 	}
 	CGImageRelease(image);
 	return result;
+}
+
+- (BOOL)hasCachedIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", iconSize];
+	OSSpinLockLock(&spinLock);
+	id result = [cachedIcons objectForKey:key];
+	OSSpinLockUnlock(&spinLock);
+	return result != nil;
 }
 
 @end
