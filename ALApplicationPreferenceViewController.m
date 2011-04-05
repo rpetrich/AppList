@@ -179,7 +179,15 @@ __attribute__((visibility("hidden")))
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
 {
-	[(ALValueCell *)[_tableView cellForRowAtIndexPath:indexPath] didSelect];
+	id cell = [_tableView cellForRowAtIndexPath:indexPath];
+	if ([cell respondsToSelector:@selector(didSelect)])
+		[cell didSelect];
+	id cellDescriptor = [_dataSource displayIdentifierForIndexPath:indexPath];
+	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
+		SEL action = NSSelectorFromString([[cellDescriptor objectForKey:@"action"] stringByAppendingString:@"FromCellDescriptor:"]);
+		if ([self respondsToSelector:action])
+			objc_msgSend(self, action, cellDescriptor);
+	}
 	[_tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
@@ -205,6 +213,11 @@ __attribute__((visibility("hidden")))
 {
 	[super pushController:controller];
 	[controller setParentController:self];
+}
+
+- (void)launchURLFromCellDescriptor:(NSDictionary *)cellDescriptor
+{
+	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:[cellDescriptor objectForKey:@"url"]]];
 }
 
 @end
