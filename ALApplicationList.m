@@ -245,6 +245,7 @@ finish:
 
 CHConstructor
 {
+	CHAutoreleasePoolForScope();
 	if (CHLoadLateClass(SBIconModel)) {
 		CHLoadLateClass(SBApplicationController);
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
