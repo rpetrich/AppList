@@ -11,6 +11,7 @@ const NSString *ALSectionDescriptorPredicateKey = @"predicate";
 const NSString *ALSectionDescriptorCellClassNameKey = @"cell-class-name";
 const NSString *ALSectionDescriptorIconSizeKey = @"icon-size";
 const NSString *ALSectionDescriptorItemsKey = @"items";
+const NSString *ALSectionDescriptorSuppressHiddenAppsKey = @"suppress-hidden-apps";
 
 const NSString *ALItemDescriptorTextKey = @"text";
 const NSString *ALItemDescriptorDetailTextKey = @"detail-text";
@@ -22,6 +23,26 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 }
 
 @implementation ALApplicationTableDataSource
+
+static NSArray *hiddenDisplayIdentifiers;
+
++ (void)initialize
+{
+	if ((self == [ALApplicationTableDataSource class])) {
+		hiddenDisplayIdentifiers = [[NSArray alloc] initWithObjects:
+		                            @"com.apple.AdSheet",
+		                            @"com.apple.AdSheetPhone",
+		                            @"com.apple.AdSheetPad",
+		                            @"com.apple.DataActivation",
+		                            @"com.apple.DemoApp",
+		                            @"com.apple.fieldtest",
+		                            @"com.apple.iosdiagnostics",
+		                            @"com.apple.iphoneos.iPodOut",
+		                            @"com.apple.TrustMe",
+		                            @"com.apple.WebSheet",
+		                            nil];
+	}
+}
 
 + (NSArray *)standardSectionDescriptors
 {
@@ -87,8 +108,14 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 				applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
 			else
 				applications = [appList applications];
-			NSArray *displayIdentifiers = [[applications allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:applications];
+			NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
+			if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
+				for (NSString *displayIdentifier in hiddenDisplayIdentifiers)
+					[displayIdentifiers removeObject:displayIdentifier];
+			}
+			[displayIdentifiers sortUsingFunction:DictionaryTextComparator context:applications];
 			[_displayIdentifiers addObject:displayIdentifiers];
+			[displayIdentifiers release];
 			NSMutableArray *displayNames = [[NSMutableArray alloc] init];
 			for (NSString *displayId in displayIdentifiers)
 				[displayNames addObject:[applications objectForKey:displayId]];
