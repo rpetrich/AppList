@@ -27,6 +27,11 @@
 @end
 
 extern const NSString *ALSectionDescriptorTitleKey;
+extern const NSString *ALSectionDescriptorFooterTitleKey;
 extern const NSString *ALSectionDescriptorPredicateKey;
 extern const NSString *ALSectionDescriptorCellClassNameKey;
 extern const NSString *ALSectionDescriptorIconSizeKey;
+
+extern const NSString *ALItemDescriptorTextKey;
+extern const NSString *ALItemDescriptorDetailTextKey;
+extern const NSString *ALItemDescriptorImageKey;

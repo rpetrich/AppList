@@ -6,9 +6,15 @@
 #import <CoreGraphics/CoreGraphics.h>
 
 const NSString *ALSectionDescriptorTitleKey = @"title";
+const NSString *ALSectionDescriptorFooterTitleKey = @"footer-title";
 const NSString *ALSectionDescriptorPredicateKey = @"predicate";
 const NSString *ALSectionDescriptorCellClassNameKey = @"cell-class-name";
 const NSString *ALSectionDescriptorIconSizeKey = @"icon-size";
+const NSString *ALSectionDescriptorItemsKey = @"items";
+
+const NSString *ALItemDescriptorTextKey = @"text";
+const NSString *ALItemDescriptorDetailTextKey = @"detail-text";
+const NSString *ALItemDescriptorImageKey = @"image";
 
 static NSInteger DictionaryTextComparator(id a, id b, void *context)
 {
@@ -70,19 +76,25 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	[_displayNames removeAllObjects];
 	for (NSDictionary *descriptor in sectionDescriptors) {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-		NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
-		NSDictionary *applications;
-		if (predicateText)
-			applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
-		else
-			applications = [appList applications];
-		NSArray *displayIdentifiers = [[applications allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:applications];
-		[_displayIdentifiers addObject:displayIdentifiers];
-		NSMutableArray *displayNames = [[NSMutableArray alloc] init];
-		for (NSString *displayId in displayIdentifiers)
-			[displayNames addObject:[applications objectForKey:displayId]];
-		[_displayNames addObject:displayNames];
-		[displayNames release];
+		NSArray *items = [descriptor objectForKey:@"items"];
+		if (items) {
+			[_displayIdentifiers addObject:items];
+			[_displayNames addObject:[NSNull null]];
+		} else {
+			NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
+			NSDictionary *applications;
+			if (predicateText)
+				applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
+			else
+				applications = [appList applications];
+			NSArray *displayIdentifiers = [[applications allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:applications];
+			[_displayIdentifiers addObject:displayIdentifiers];
+			NSMutableArray *displayNames = [[NSMutableArray alloc] init];
+			for (NSString *displayId in displayIdentifiers)
+				[displayNames addObject:[applications objectForKey:displayId]];
+			[_displayNames addObject:displayNames];
+			[displayNames release];
+		}
 		[pool release];
 	}
 	[_sectionDescriptors release];
@@ -102,6 +114,11 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
 	return [[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorTitleKey];
+}
+
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
+{
+	return [[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorFooterTitleKey];
 }
 
 - (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section
@@ -139,32 +156,51 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	if (!cell) {
 		cell = [[[NSClassFromString(cellClassName) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellClassName] autorelease];
 	}
-	cell.textLabel.text = [[_displayNames objectAtIndex:section] objectAtIndex:row];
-	CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
-	if (iconSize > 0) {
-		NSString *displayIdentifier = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
-		if (_tableView == nil || [appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier])
-			cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
-		else {
-			cell.indentationWidth = iconSize + 7.0f;
-			cell.indentationLevel = 1;
-			cell.imageView.image = nil;
-			NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-			                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
-			                          displayIdentifier, ALDisplayIdentifierKey,
-			                          nil];
-			OSSpinLockLock(&spinLock);
-			if (_iconsToLoad)
-				[_iconsToLoad addObject:userInfo];
-			else {
-				[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
-				_iconsToLoad = [[NSMutableArray alloc] initWithObjects:userInfo, nil];
-				[self performSelectorInBackground:@selector(loadIconsFromBackground) withObject:nil];
-			}
-			OSSpinLockUnlock(&spinLock);
+	id displayNames = [_displayNames objectAtIndex:section];
+	if (displayNames == [NSNull null]) {
+		NSDictionary *itemDescriptor = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
+		cell.textLabel.text = [itemDescriptor objectForKey:ALItemDescriptorTextKey];
+		cell.detailTextLabel.text = [itemDescriptor objectForKey:ALItemDescriptorDetailTextKey];
+		NSString *imagePath = [itemDescriptor objectForKey:ALItemDescriptorImageKey];
+		UIImage *image = nil;
+		if (imagePath) {
+			CGFloat scale;
+			if ([UIScreen instancesRespondToSelector:@selector(scale)] && ((scale = [[UIScreen mainScreen] scale]) != 1.0f))
+				image = [UIImage imageWithContentsOfFile:[NSString stringWithFormat:@"%@@%gx.%@", [imagePath stringByDeletingPathExtension], scale, [imagePath pathExtension]]];
+			if (!image)
+				image = [UIImage imageWithContentsOfFile:imagePath];
 		}
+		cell.imageView.image = image;
 	} else {
-		cell.imageView.image = nil;
+		cell.textLabel.text = [displayNames objectAtIndex:row];
+		CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
+		if (iconSize > 0) {
+			NSString *displayIdentifier = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
+			if (_tableView == nil || [appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier]) {
+				cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+				cell.indentationWidth = 10.0f;
+				cell.indentationLevel = 0;
+			} else {
+				cell.indentationWidth = iconSize + 7.0f;
+				cell.indentationLevel = 1;
+				cell.imageView.image = nil;
+				NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+				                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
+				                          displayIdentifier, ALDisplayIdentifierKey,
+				                          nil];
+				OSSpinLockLock(&spinLock);
+				if (_iconsToLoad)
+					[_iconsToLoad addObject:userInfo];
+				else {
+					[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
+					_iconsToLoad = [[NSMutableArray alloc] initWithObjects:userInfo, nil];
+					[self performSelectorInBackground:@selector(loadIconsFromBackground) withObject:nil];
+				}
+				OSSpinLockUnlock(&spinLock);
+			}
+		} else {
+			cell.imageView.image = nil;
+		}
 	}
 	return cell;
 }
