@@ -18,6 +18,7 @@ __attribute__((visibility("hidden")))
 	NSMutableDictionary *settings;
 	NSString *settingsKeyPrefix;
 	NSString *settingsChangeNotification;
+	BOOL singleEnabledMode;
 }
 
 - (id)initForContentSize:(CGSize)size;
@@ -122,20 +123,22 @@ __attribute__((visibility("hidden")))
 - (void)loadFromSpecifier:(PSSpecifier *)specifier
 {
 	[self setNavigationTitle:[specifier propertyForKey:@"ALNavigationTitle"] ?: [specifier name]];
+	singleEnabledMode = [[specifier propertyForKey:@"ALSingleEnabledMode"] boolValue];
 	NSArray *descriptors = [specifier propertyForKey:@"ALSectionDescriptors"];
 	if (!descriptors) {
+		NSString *defaultCellClass = singleEnabledMode ? @"ALCheckCell" : @"ALSwitchCell";
 		NSNumber *iconSize = [NSNumber numberWithUnsignedInteger:ALApplicationIconSizeSmall];
 		descriptors = [NSArray arrayWithObjects:
 			[NSDictionary dictionaryWithObjectsAndKeys:
 				@"System Applications", ALSectionDescriptorTitleKey,
 				@"isSystemApplication = TRUE", ALSectionDescriptorPredicateKey,
-				@"ALSwitchCell", ALSectionDescriptorCellClassNameKey,
+				defaultCellClass, ALSectionDescriptorCellClassNameKey,
 				iconSize, ALSectionDescriptorIconSizeKey,
 			nil],
 			[NSDictionary dictionaryWithObjectsAndKeys:
 				@"User Applications", ALSectionDescriptorTitleKey,
 				@"isSystemApplication = FALSE", ALSectionDescriptorPredicateKey,
-				@"ALSwitchCell", ALSectionDescriptorCellClassNameKey,
+				defaultCellClass, ALSectionDescriptorCellClassNameKey,
 				iconSize, ALSectionDescriptorIconSizeKey,
 			nil],
 		nil];
@@ -146,11 +149,12 @@ __attribute__((visibility("hidden")))
 	[settingsPath release];
 	settingsPath = [[specifier propertyForKey:@"ALSettingsPath"] retain];
 	[settingsKeyPrefix release];
-	settingsKeyPrefix = [[specifier propertyForKey:@"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
+	settingsKeyPrefix = [[specifier propertyForKey:singleEnabledMode ? @"ALSettingsKey" : @"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
 	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
 	[settingsChangeNotification release];
 	settingsChangeNotification = [[specifier propertyForKey:@"ALChangeNotification"] retain];
-	[_tableView setAllowsSelection:[[specifier propertyForKey:@"ALAllowsSelection"] boolValue]];
+	id temp = [specifier propertyForKey:@"ALAllowsSelection"];
+	[_tableView setAllowsSelection:temp ? [temp boolValue] : singleEnabledMode];
 	[_tableView reloadData];
 }
 
@@ -194,8 +198,22 @@ __attribute__((visibility("hidden")))
 - (void)cellAtIndexPath:(NSIndexPath *)indexPath didChangeToValue:(id)newValue
 {
 	NSString *displayIdentifier = [_dataSource displayIdentifierForIndexPath:indexPath];
-	NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
-	[settings setObject:newValue forKey:key];
+	if (singleEnabledMode) {
+		if ([newValue boolValue]) {
+			[settings setObject:displayIdentifier forKey:settingsKeyPrefix];
+			for (NSIndexPath *otherIndexPath in [_tableView indexPathsForVisibleRows]) {
+				if (![otherIndexPath isEqual:indexPath]) {
+					ALValueCell *otherCell = (ALValueCell *)[_tableView cellForRowAtIndexPath:otherIndexPath];
+					[otherCell loadValue:(id)kCFBooleanFalse];
+				}
+			}
+		} else if ([[settings objectForKey:settingsKeyPrefix] isEqual:displayIdentifier]) {
+			[settings removeObjectForKey:settingsKeyPrefix];
+		}
+	} else {
+		NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
+		[settings setObject:newValue forKey:key];
+	}
 	if (settingsPath)
 		[settings writeToFile:settingsPath atomically:YES];
 	if (settingsChangeNotification)
@@ -205,8 +223,12 @@ __attribute__((visibility("hidden")))
 - (id)valueForCellAtIndexPath:(NSIndexPath *)indexPath
 {
 	NSString *displayIdentifier = [_dataSource displayIdentifierForIndexPath:indexPath];
-	NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
-	return [settings objectForKey:key] ?: settingsDefaultValue;
+	if (singleEnabledMode) {
+		return [[settings objectForKey:settingsKeyPrefix] isEqualToString:displayIdentifier] ? (id)kCFBooleanTrue : (id)kCFBooleanFalse;
+	} else {
+		NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
+		return [settings objectForKey:key] ?: settingsDefaultValue;
+	}
 }
 
 - (void)pushController:(id<PSBaseView>)controller
