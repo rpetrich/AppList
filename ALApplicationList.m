@@ -228,14 +228,19 @@ CHDeclareClass(SBIconModel);
 		image = getIconImage ? [icon getIconImage:0] : [icon smallIcon];
 		if (image)
 			goto finish;
-		image = [UIImage imageWithContentsOfFile:[app pathForSmallIcon]];
-		if (image)
-			goto finish;
+		if ([app respondsToSelector:@selector(pathForSmallIcon)]) {
+			image = [UIImage imageWithContentsOfFile:[app pathForSmallIcon]];
+			if (image)
+				goto finish;
+		}
 	}
 	image = getIconImage ? [icon getIconImage:1] : [icon icon];
 	if (image)
 		goto finish;
-	image = [UIImage imageWithContentsOfFile:[app pathForIcon]];
+	if ([app respondsToSelector:@selector(pathForIcon)])
+		image = [UIImage imageWithContentsOfFile:[app pathForIcon]];
+	if (!image)
+		return NULL;
 finish:
 	return CGImageRetain([image CGImage]);
 }
