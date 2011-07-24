@@ -17,6 +17,8 @@ AppList_PRIVATE_FRAMEWORKS = Preferences
 AppList_LDFLAGS = -L$(FW_OBJ_DIR) -lapplist
 AppList_INSTALL_PATH = /System/Library/PreferenceBundles
 
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 3.0
+
 include framework/makefiles/common.mk
 include framework/makefiles/library.mk
 include framework/makefiles/bundle.mk
