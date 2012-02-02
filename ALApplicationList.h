@@ -16,7 +16,7 @@ typedef NSUInteger ALApplicationIconSize;
 	NSMutableDictionary *cachedIcons;
 	OSSpinLock spinLock;
 }
-+ (id)sharedApplicationList;
++ (ALApplicationList *)sharedApplicationList;
 
 @property (nonatomic, readonly) NSDictionary *applications;
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate;

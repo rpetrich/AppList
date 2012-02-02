@@ -34,7 +34,7 @@ static ALApplicationList *sharedApplicationList;
 
 @implementation ALApplicationList
 
-+ (id)sharedApplicationList
++ (ALApplicationList *)sharedApplicationList
 {
 	return sharedApplicationList;
 }
