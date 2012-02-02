@@ -238,7 +238,7 @@ CHDeclareClass(SBIconModel);
 				goto finish;
 		}
 	}
-	image = getIconImage ? [icon getIconImage:1] : [icon icon];
+	image = getIconImage ? [icon getIconImage:(kCFCoreFoundationVersionNumber >= 675.0) ? 2 : 1] : [icon icon];
 	if (image)
 		goto finish;
 	if ([app respondsToSelector:@selector(pathForIcon)])
