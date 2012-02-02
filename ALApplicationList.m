@@ -42,6 +42,10 @@ static ALApplicationList *sharedApplicationList;
 - (id)init
 {
 	if ((self = [super init])) {
+		if (sharedApplicationList) {
+			[self release];
+			@throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Only one instance of ALApplicationList is permitted at a time! Use [ALApplicationList sharedApplicationList] instead." userInfo:nil];
+		}
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 		messagingCenter = [[CPDistributedMessagingCenter centerNamed:@"applist.springboardCenter"] retain];
 		cachedIcons = [[NSMutableDictionary alloc] init];
