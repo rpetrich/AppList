@@ -53,12 +53,14 @@ static NSArray *hiddenDisplayIdentifiers;
 			@"isSystemApplication = TRUE", ALSectionDescriptorPredicateKey,
 			@"UITableViewCell", ALSectionDescriptorCellClassNameKey,
 			iconSize, ALSectionDescriptorIconSizeKey,
+			(id)kCFBooleanTrue, ALSectionDescriptorSuppressHiddenAppsKey,
 		nil],
 		[NSDictionary dictionaryWithObjectsAndKeys:
 			@"User Applications", ALSectionDescriptorTitleKey,
 			@"isSystemApplication = FALSE", ALSectionDescriptorPredicateKey,
 			@"UITableViewCell", ALSectionDescriptorCellClassNameKey,
 			iconSize, ALSectionDescriptorIconSizeKey,
+			(id)kCFBooleanTrue, ALSectionDescriptorSuppressHiddenAppsKey,
 		nil],
 	nil];
 }
