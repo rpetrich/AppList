@@ -5,6 +5,7 @@
 #import <SpringBoard/SpringBoard.h>
 #import <CaptainHook/CaptainHook.h>
 #import <AppSupport/AppSupport.h>
+#import <dlfcn.h>
 
 NSString *const ALIconLoadedNotification = @"ALIconLoadedNotification";
 NSString *const ALDisplayIdentifierKey = @"ALDisplayIdentifier";
@@ -31,6 +32,14 @@ NSString *const ALIconSizeKey = @"ALIconSize";
 @end
 
 static ALApplicationList *sharedApplicationList;
+
+// Can't late-bind and still support iOS3.0 :(
+static bool (*_CGImageDestinationFinalize)(CGImageDestinationRef idst);
+static CGImageDestinationRef (*_CGImageDestinationCreateWithData)(CFMutableDataRef data, CFStringRef type, size_t count, CFDictionaryRef options);
+static void (*_CGImageDestinationAddImage)(CGImageDestinationRef idst, CGImageRef image, CFDictionaryRef properties);
+static CGImageSourceRef (*_CGImageSourceCreateWithData)(CFDataRef data, CFDictionaryRef options);
+static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, size_t index, CFDictionaryRef options);
+
 
 @implementation ALApplicationList
 
@@ -107,8 +116,8 @@ static ALApplicationList *sharedApplicationList;
 	NSData *data = [serialized objectForKey:@"result"];
 	if (!data)
 		return NULL;
-	CGImageSourceRef imageSource = CGImageSourceCreateWithData((CFDataRef)data, NULL);
-	result = CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+	CGImageSourceRef imageSource = _CGImageSourceCreateWithData((CFDataRef)data, NULL);
+	result = _CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
 	if (result) {
 		OSSpinLockLock(&spinLock);
 		[cachedIcons setObject:(id)result forKey:key];
@@ -207,10 +216,10 @@ CHDeclareClass(SBIconModel);
 	if (!image)
 		return [NSDictionary dictionary];
 	NSMutableData *result = [NSMutableData data];
-	CGImageDestinationRef dest = CGImageDestinationCreateWithData((CFMutableDataRef)result, CFSTR("public.png"), 1, NULL);
-	CGImageDestinationAddImage(dest, image, NULL);
+	CGImageDestinationRef dest = _CGImageDestinationCreateWithData((CFMutableDataRef)result, CFSTR("public.png"), 1, NULL);
+	_CGImageDestinationAddImage(dest, image, NULL);
 	CGImageRelease(image);
-	CGImageDestinationFinalize(dest);
+	_CGImageDestinationFinalize(dest);
 	CFRelease(dest);
 	return [NSDictionary dictionaryWithObject:result forKey:@"result"];
 }
@@ -255,10 +264,18 @@ finish:
 CHConstructor
 {
 	CHAutoreleasePoolForScope();
+	void *handle = dlopen("/System/Library/Frameworks/ImageIO.framework/ImageIO", RTLD_LAZY) ?: dlopen("/System/Library/PrivateFrameworks/ImageIO.framework/ImageIO", RTLD_LAZY);
+	if (!handle)
+		return;
 	if (CHLoadLateClass(SBIconModel)) {
 		CHLoadLateClass(SBApplicationController);
+		_CGImageDestinationCreateWithData = dlsym(handle, "CGImageDestinationCreateWithData");
+		_CGImageDestinationAddImage = dlsym(handle, "CGImageDestinationAddImage");
+		_CGImageDestinationFinalize = dlsym(handle, "CGImageDestinationFinalize");
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
 	} else {
+		_CGImageSourceCreateWithData = dlsym(handle, "CGImageSourceCreateWithData");
+		_CGImageSourceCreateImageAtIndex = dlsym(handle, "CGImageSourceCreateImageAtIndex");
 		sharedApplicationList = [[ALApplicationList alloc] init];
 	}
 }
