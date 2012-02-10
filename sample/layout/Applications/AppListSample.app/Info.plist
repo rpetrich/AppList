@@ -1,0 +1,33 @@
+{
+	CFBundleExecutable = AppListSample;
+	CFBundleIdentifier = "com.rpetrich.applist.sample";
+	"CFBundleInfoDictionaryVersion" = "6.0";
+	CFBundlePackageType = APPL;
+	CFBundleSignature = "????";
+	"CFBundleSupportedPlatforms" = (
+		iPhoneOS,
+	);
+	CFBundleVersion = "0.1";
+	DTPlatformName = iphoneos;
+	DTSDKName = "iphoneos3.0";
+	LSRequiresIPhoneOS = YES;
+	MinimumOSVersion = "3.0";
+	UIApplicationExitsOnSuspend = 0;
+	UIStatusBarStyle = UIStatusBarStyleDefault;
+	UIDeviceFamily = (
+		1,
+		2,
+	);
+	UISupportedInterfaceOrientations = (
+		UIInterfaceOrientationPortrait,
+		UIInterfaceOrientationPortraitUpsideDown,
+		UIInterfaceOrientationLandscapeLeft,
+		UIInterfaceOrientationLandscapeRight,
+	);
+	"UISupportedInterfaceOrientations~ipad" = (
+		UIInterfaceOrientationPortrait,
+		UIInterfaceOrientationPortraitUpsideDown,
+		UIInterfaceOrientationLandscapeLeft,
+		UIInterfaceOrientationLandscapeRight,
+	);
+}

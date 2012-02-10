@@ -1,0 +1,10 @@
+Package: applist-sample
+Name: AppList
+Version: 0.1
+Architecture: iphoneos-arm
+Description: Sample to test AppList
+Maintainer: Ryan Petrich <rpetrich@gmail.com>
+Author: Ryan Petrich <rpetrich@gmail.com>
+Depends: mobilesubstrate, applist (>= 1.4.1), firmware (>= 3.0), preferenceloader
+Section: System
+dev: rpetrich
