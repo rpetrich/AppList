@@ -251,7 +251,7 @@ static NSArray *hiddenDisplayIdentifiers;
 	for (NSIndexPath *indexPath in _tableView.indexPathsForVisibleRows) {
 		NSInteger section = indexPath.section;
 		NSString *rowDisplayIdentifier = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:indexPath.row];
-		if ([rowDisplayIdentifier isEqualToString:displayIdentifier]) {
+		if ([rowDisplayIdentifier isEqual:displayIdentifier]) {
 			UITableViewCell *cell = [_tableView cellForRowAtIndexPath:indexPath];
 			UIImageView *imageView = cell.imageView;
 			UIImage *image = imageView.image;
