@@ -217,7 +217,7 @@ static NSArray *hiddenDisplayIdentifiers;
 				                          nil];
 				OSSpinLockLock(&spinLock);
 				if (_iconsToLoad)
-					[_iconsToLoad addObject:userInfo];
+					[_iconsToLoad insertObject:userInfo atIndex:0];
 				else {
 					[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
 					_iconsToLoad = [[NSMutableArray alloc] initWithObjects:userInfo, nil];
