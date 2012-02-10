@@ -40,6 +40,7 @@ static NSArray *hiddenDisplayIdentifiers;
 		                            @"com.apple.iphoneos.iPodOut",
 		                            @"com.apple.TrustMe",
 		                            @"com.apple.WebSheet",
+		                            @"com.apple.springboard",
 		                            nil];
 	}
 }
