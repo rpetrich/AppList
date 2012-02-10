@@ -74,6 +74,7 @@ static NSArray *hiddenDisplayIdentifiers;
 		appList = [[ALApplicationList sharedApplicationList] retain];
 		_displayIdentifiers = [[NSMutableArray alloc] init];
 		_displayNames = [[NSMutableArray alloc] init];
+		_defaultImage = [[appList iconOfSize:ALApplicationIconSizeSmall forDisplayIdentifier:@"com.apple.WebSheet"] retain];
 	}
 	return self;
 }
@@ -84,6 +85,7 @@ static NSArray *hiddenDisplayIdentifiers;
 	[_tableView release];
 	[_displayIdentifiers release];
 	[_displayNames release];
+	[_defaultImage release];
 	[appList release];
 	[super dealloc];
 }
@@ -208,9 +210,16 @@ static NSArray *hiddenDisplayIdentifiers;
 				cell.indentationWidth = 10.0f;
 				cell.indentationLevel = 0;
 			} else {
-				cell.indentationWidth = iconSize + 7.0f;
-				cell.indentationLevel = 1;
-				cell.imageView.image = nil;
+				if (_defaultImage.size.width == iconSize) {
+					cell.imageView.image = _defaultImage;
+					cell.indentationWidth = 10.0f;
+					cell.indentationLevel = 0;
+				} else {
+					cell.indentationWidth = iconSize + 7.0f;
+					cell.indentationLevel = 1;
+					cell.imageView.image = nil;
+				}
+				cell.imageView.image = _defaultImage;
 				NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
 				                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
 				                          displayIdentifier, ALDisplayIdentifierKey,
@@ -242,7 +251,8 @@ static NSArray *hiddenDisplayIdentifiers;
 		if ([rowDisplayIdentifier isEqualToString:displayIdentifier]) {
 			UITableViewCell *cell = [_tableView cellForRowAtIndexPath:indexPath];
 			UIImageView *imageView = cell.imageView;
-			if (imageView.image == nil) {
+			UIImage *image = imageView.image;
+			if (!image || (image == _defaultImage)) {
 				NSDictionary *sectionDescriptor = [_sectionDescriptors objectAtIndex:section];
 				CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
 				cell.indentationLevel = 0;

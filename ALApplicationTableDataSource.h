@@ -12,6 +12,7 @@
 	NSMutableArray *_iconsToLoad;
 	OSSpinLock spinLock;
 	UITableView *_tableView;
+	UIImage *_defaultImage;
 }
 
 + (NSArray *)standardSectionDescriptors;
