@@ -102,7 +102,7 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", iconSize];
+	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", (CGFloat)iconSize];
 	OSSpinLockLock(&spinLock);
 	CGImageRef result = (CGImageRef)[cachedIcons objectForKey:key];
 	if (result) {
@@ -153,7 +153,7 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 
 - (BOOL)hasCachedIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", iconSize];
+	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", (CGFloat)iconSize];
 	OSSpinLockLock(&spinLock);
 	id result = [cachedIcons objectForKey:key];
 	OSSpinLockUnlock(&spinLock);
