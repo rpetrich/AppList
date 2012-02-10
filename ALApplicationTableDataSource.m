@@ -236,18 +236,18 @@ static NSArray *hiddenDisplayIdentifiers;
 {
 	NSDictionary *userInfo = notification.userInfo;
 	NSString *displayIdentifier = [userInfo objectForKey:ALDisplayIdentifierKey];
-	NSInteger section = [_displayIdentifiers count];
-	while (section) {
-		section--;
-		NSUInteger row = [[_displayIdentifiers objectAtIndex:section] indexOfObject:displayIdentifier];
-		if (row != NSNotFound) {
-			NSIndexPath *indexPath = [NSIndexPath indexPathForRow:row inSection:section];
-			if ([_tableView.indexPathsForVisibleRows containsObject:indexPath]) {
-				UITableViewCell *cell = [_tableView cellForRowAtIndexPath:indexPath];
-				NSInteger iconSize = [[userInfo objectForKey:ALIconSizeKey] integerValue];
+	for (NSIndexPath *indexPath in _tableView.indexPathsForVisibleRows) {
+		NSInteger section = indexPath.section;
+		NSString *rowDisplayIdentifier = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:indexPath.row];
+		if ([rowDisplayIdentifier isEqualToString:displayIdentifier]) {
+			UITableViewCell *cell = [_tableView cellForRowAtIndexPath:indexPath];
+			UIImageView *imageView = cell.imageView;
+			if (imageView.image == nil) {
+				NSDictionary *sectionDescriptor = [_sectionDescriptors objectAtIndex:section];
+				CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
 				cell.indentationLevel = 0;
 				cell.indentationWidth = 10.0f;
-				cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+				imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
 				[cell setNeedsLayout];
 			}
 		}
