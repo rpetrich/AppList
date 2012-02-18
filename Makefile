@@ -14,7 +14,8 @@ BUNDLE_NAME = AppList
 AppList_OBJC_FILES = ALApplicationPreferenceViewController.m
 AppList_FRAMEWORKS = UIKit CoreGraphics
 AppList_PRIVATE_FRAMEWORKS = Preferences
-AppList_LDFLAGS = -L$(FW_OBJ_DIR) -lapplist
+AppList_LDFLAGS = -L$(FW_OBJ_DIR)
+AppList_LIBRARIES = applist
 AppList_INSTALL_PATH = /System/Library/PreferenceBundles
 
 TARGET_IPHONEOS_DEPLOYMENT_VERSION = 3.0
