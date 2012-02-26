@@ -13,6 +13,7 @@
 	OSSpinLock spinLock;
 	UITableView *_tableView;
 	UIImage *_defaultImage;
+	NSBundle *_localizationBundle;
 }
 
 + (NSArray *)standardSectionDescriptors;
@@ -22,6 +23,7 @@
 
 @property (nonatomic, copy) NSArray *sectionDescriptors;
 @property (nonatomic, retain) UITableView *tableView;
+@property (nonatomic, retain) NSBundle *localizationBundle;
 
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 

@@ -85,6 +85,7 @@ static NSArray *hiddenDisplayIdentifiers;
 - (void)dealloc
 {
 	[[NSNotificationCenter defaultCenter] removeObserver:self];
+	[_localizationBundle release];
 	[_tableView release];
 	[_displayIdentifiers release];
 	[_displayNames release];
@@ -95,6 +96,7 @@ static NSArray *hiddenDisplayIdentifiers;
 
 @synthesize sectionDescriptors = _sectionDescriptors;
 @synthesize tableView = _tableView;
+@synthesize localizationBundle = _localizationBundle;
 
 - (void)setSectionDescriptors:(NSArray *)sectionDescriptors
 {
@@ -128,10 +130,26 @@ static NSArray *hiddenDisplayIdentifiers;
 			[displayNames release];
 		}
 		[pool release];
+		[_tableView reloadData];
 	}
 	[_sectionDescriptors release];
 	_sectionDescriptors = [sectionDescriptors copy];
 }
+
+- (void)setLocalzationBundle:(NSBundle *)localizationBundle
+{
+	if (_localizationBundle != localizationBundle) {
+		[_localizationBundle autorelease];
+		_localizationBundle = [localizationBundle retain];
+		[_tableView reloadData];
+	}
+}
+
+static inline Localize(NSBundle *bundle, NSString *string)
+{
+	return bundle ? [bundle localizedStringForKey:string value:string section:nil] : string;
+}
+#define Localize(string) Localize(_localizationBundle, string)
 
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath
 {
@@ -145,12 +163,12 @@ static NSArray *hiddenDisplayIdentifiers;
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
 {
-	return [[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorTitleKey];
+	return Localize([[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorTitleKey]);
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section
 {
-	return [[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorFooterTitleKey];
+	return Localize([[_sectionDescriptors objectAtIndex:section] objectForKey:ALSectionDescriptorFooterTitleKey]);
 }
 
 - (NSInteger)tableView:(UITableView *)table numberOfRowsInSection:(NSInteger)section
@@ -191,8 +209,8 @@ static NSArray *hiddenDisplayIdentifiers;
 	id displayNames = [_displayNames objectAtIndex:section];
 	if (displayNames == [NSNull null]) {
 		NSDictionary *itemDescriptor = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
-		cell.textLabel.text = [itemDescriptor objectForKey:ALItemDescriptorTextKey];
-		cell.detailTextLabel.text = [itemDescriptor objectForKey:ALItemDescriptorDetailTextKey];
+		cell.textLabel.text = Localize([itemDescriptor objectForKey:ALItemDescriptorTextKey]);
+		cell.detailTextLabel.text = Localize([itemDescriptor objectForKey:ALItemDescriptorDetailTextKey]);
 		NSString *imagePath = [itemDescriptor objectForKey:ALItemDescriptorImageKey];
 		UIImage *image = nil;
 		if (imagePath) {

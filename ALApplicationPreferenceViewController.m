@@ -144,6 +144,8 @@ __attribute__((visibility("hidden")))
 		nil];
 	}
 	[_dataSource setSectionDescriptors:descriptors];
+	NSString *bundlePath = [specifier propertyForKey:@"ALLocalizationBundle"];
+	_dataSource.localizationBundle = bundlePath ? [NSBundle bundleWithPath:bundlePath] : nil;
 	[settingsDefaultValue release];
 	settingsDefaultValue = [[specifier propertyForKey:@"ALSettingsDefaultValue"] retain];
 	[settingsPath release];
