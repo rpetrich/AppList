@@ -19,6 +19,8 @@ __attribute__((visibility("hidden")))
 	NSString *settingsKeyPrefix;
 	NSString *settingsChangeNotification;
 	BOOL singleEnabledMode;
+        NSMutableArray *settingsList;
+        NSString *settingsKey;
 }
 
 - (id)initForContentSize:(CGSize)size;
@@ -106,6 +108,8 @@ __attribute__((visibility("hidden")))
 	[settingsPath release];
 	[settingsKeyPrefix release];
 	[settingsChangeNotification release];
+        [settingsList release];
+        [settingsKey release];
 	[_navigationTitle release];
 	[super dealloc];
 }
@@ -150,9 +154,12 @@ __attribute__((visibility("hidden")))
 	settingsDefaultValue = [[specifier propertyForKey:@"ALSettingsDefaultValue"] retain];
 	[settingsPath release];
 	settingsPath = [[specifier propertyForKey:@"ALSettingsPath"] retain];
-	[settingsKeyPrefix release];
-	settingsKeyPrefix = [[specifier propertyForKey:singleEnabledMode ? @"ALSettingsKey" : @"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
 	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
+        [settingsKey release];
+        settingsKey = [[specifier propertyForKey:@"ALSettingsKey"] retain];
+        settingsList = settingsKey ? [settings objectForKey:settingsKey] : settings;
+	[settingsKeyPrefix release];
+	settingsKeyPrefix = [settingsKey ? @"" : [specifier propertyForKey:singleEnabledMode ? @"ALSettingsKey" : @"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
 	[settingsChangeNotification release];
 	settingsChangeNotification = [[specifier propertyForKey:@"ALChangeNotification"] retain];
 	id temp = [specifier propertyForKey:@"ALAllowsSelection"];
@@ -202,22 +209,25 @@ __attribute__((visibility("hidden")))
 	NSString *displayIdentifier = [_dataSource displayIdentifierForIndexPath:indexPath];
 	if (singleEnabledMode) {
 		if ([newValue boolValue]) {
-			[settings setObject:displayIdentifier forKey:settingsKeyPrefix];
+			[settingsList setObject:displayIdentifier forKey:settingsKeyPrefix];
 			for (NSIndexPath *otherIndexPath in [_tableView indexPathsForVisibleRows]) {
 				if (![otherIndexPath isEqual:indexPath]) {
 					ALValueCell *otherCell = (ALValueCell *)[_tableView cellForRowAtIndexPath:otherIndexPath];
 					[otherCell loadValue:(id)kCFBooleanFalse];
 				}
 			}
-		} else if ([[settings objectForKey:settingsKeyPrefix] isEqual:displayIdentifier]) {
-			[settings removeObjectForKey:settingsKeyPrefix];
+		} else if ([[settingsList objectForKey:settingsKeyPrefix] isEqual:displayIdentifier]) {
+			[settingsList removeObjectForKey:settingsKeyPrefix];
 		}
 	} else {
 		NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
-		[settings setObject:newValue forKey:key];
+		[settingsList setObject:newValue forKey:key];
 	}
-	if (settingsPath)
+	if (settingsPath) {
+                if(settingsKey) [settings setObject:settingsList forKey:settingsKey];
+                else settings = settingsList;
 		[settings writeToFile:settingsPath atomically:YES];
+        }
 	if (settingsChangeNotification)
 		notify_post([settingsChangeNotification UTF8String]);
 }
@@ -226,10 +236,10 @@ __attribute__((visibility("hidden")))
 {
 	NSString *displayIdentifier = [_dataSource displayIdentifierForIndexPath:indexPath];
 	if (singleEnabledMode) {
-		return [[settings objectForKey:settingsKeyPrefix] isEqualToString:displayIdentifier] ? (id)kCFBooleanTrue : (id)kCFBooleanFalse;
+		return [[settingsList objectForKey:settingsKeyPrefix] isEqualToString:displayIdentifier] ? (id)kCFBooleanTrue : (id)kCFBooleanFalse;
 	} else {
 		NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
-		return [settings objectForKey:key] ?: settingsDefaultValue;
+		return [settingsList objectForKey:key] ?: settingsDefaultValue;
 	}
 }
 
