@@ -41,6 +41,7 @@ static NSArray *hiddenDisplayIdentifiers;
 		                            @"com.apple.TrustMe",
 		                            @"com.apple.WebSheet",
 		                            @"com.apple.springboard",
+                                            @"com.apple.purplebuddy",
 		                            nil];
 	}
 }
