@@ -157,7 +157,7 @@ __attribute__((visibility("hidden")))
 	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
         [settingsKey release];
         settingsKey = [[specifier propertyForKey:@"ALSettingsKey"] retain];
-        settingsList = settingsKey ? [settings objectForKey:settingsKey] : settings;
+        settingsList = settingsKey ? ([settings objectForKey:settingsKey] ?: [[NSMutableArray alloc] init]) : settings;
 	[settingsKeyPrefix release];
 	settingsKeyPrefix = [settingsKey ? @"" : [specifier propertyForKey:singleEnabledMode ? @"ALSettingsKey" : @"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
 	[settingsChangeNotification release];
