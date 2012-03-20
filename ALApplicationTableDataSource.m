@@ -79,6 +79,7 @@ static NSArray *hiddenDisplayIdentifiers;
 		_displayIdentifiers = [[NSMutableArray alloc] init];
 		_displayNames = [[NSMutableArray alloc] init];
 		_defaultImage = [[appList iconOfSize:ALApplicationIconSizeSmall forDisplayIdentifier:@"com.apple.WebSheet"] retain];
+		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
 	}
 	return self;
 }
@@ -250,7 +251,6 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 				if (_iconsToLoad)
 					[_iconsToLoad insertObject:userInfo atIndex:0];
 				else {
-					[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
 					_iconsToLoad = [[NSMutableArray alloc] initWithObjects:userInfo, nil];
 					[self performSelectorInBackground:@selector(loadIconsFromBackground) withObject:nil];
 				}
@@ -284,8 +284,6 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 			}
 		}
 	}
-	if (!_iconsToLoad)
-		[[NSNotificationCenter defaultCenter] removeObserver:self name:ALIconLoadedNotification object:nil];
 }
 
 @end
