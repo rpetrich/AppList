@@ -146,9 +146,9 @@ static NSArray *hiddenDisplayIdentifiers;
 	}
 }
 
-static inline Localize(NSBundle *bundle, NSString *string)
+static inline NSString *Localize(NSBundle *bundle, NSString *string)
 {
-	return bundle ? [bundle localizedStringForKey:string value:string section:nil] : string;
+	return bundle ? [bundle localizedStringForKey:string value:string table:nil] : string;
 }
 #define Localize(string) Localize(_localizationBundle, string)
 
