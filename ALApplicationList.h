@@ -12,7 +12,6 @@ typedef NSUInteger ALApplicationIconSize;
 
 @interface ALApplicationList : NSObject {
 @private
-	CPDistributedMessagingCenter *messagingCenter;
 	NSMutableDictionary *cachedIcons;
 	OSSpinLock spinLock;
 }

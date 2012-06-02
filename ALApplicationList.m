@@ -4,13 +4,26 @@
 #import <UIKit/UIKit.h>
 #import <SpringBoard/SpringBoard.h>
 #import <CaptainHook/CaptainHook.h>
-#import <AppSupport/AppSupport.h>
 #import <dlfcn.h>
 
 NSString *const ALIconLoadedNotification = @"ALIconLoadedNotification";
 NSString *const ALDisplayIdentifierKey = @"ALDisplayIdentifier";
 NSString *const ALIconSizeKey = @"ALIconSize";
 
+enum {
+	ALMessageIdGetApplications,
+	ALMessageIdIconForSize
+};
+
+static CFMessagePortRef messagePort;
+static inline CFDataRef SendMessage(SInt32 messageId, CFDataRef data)
+{
+	if (!CFMessagePortIsValid(messagePort))
+		messagePort = CFMessagePortCreateRemote(kCFAllocatorDefault, CFSTR("applist.datasource"));
+	CFDataRef outData = NULL;
+	CFMessagePortSendRequest(messagePort, messageId, data, 45.0, 45.0, CFSTR("applist.waiting-on-datasource"), &outData);
+	return outData;
+}
 
 @interface SBIconModel ()
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
@@ -20,15 +33,7 @@ NSString *const ALIconSizeKey = @"ALIconSize";
 + (UIImage *)imageWithCGImage:(CGImageRef)imageRef scale:(CGFloat)scale orientation:(int)orientation;
 @end
 
-@interface ALApplicationList ()
-
-@property (nonatomic, readonly) CPDistributedMessagingCenter *messagingCenter;
-
-@end
-
-@interface ALApplicationListImpl : ALApplicationList {
-}
-
+@interface ALApplicationListImpl : ALApplicationList
 @end
 
 static ALApplicationList *sharedApplicationList;
@@ -56,7 +61,6 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 			@throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Only one instance of ALApplicationList is permitted at a time! Use [ALApplicationList sharedApplicationList] instead." userInfo:nil];
 		}
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-		messagingCenter = [[CPDistributedMessagingCenter centerNamed:@"applist.springboardCenter"] retain];
 		cachedIcons = [[NSMutableDictionary alloc] init];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveMemoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
 		[pool drain];
@@ -64,13 +68,10 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 	return self;
 }
 
-@synthesize messagingCenter;
-
 - (void)dealloc
 {
 	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[cachedIcons release];
-	[messagingCenter release];
 	[super dealloc];
 }
 
@@ -83,16 +84,20 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 
 - (NSDictionary *)applications
 {
-	return [messagingCenter sendMessageAndReceiveReplyName:@"applications" userInfo:nil];
+	return [self applicationsFilteredUsingPredicate:nil];
 }
 
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
-	if (!predicate)
-		return [self applications];
-	NSData *data = [NSKeyedArchiver archivedDataWithRootObject:predicate];
-	NSDictionary *userInfo = [NSDictionary dictionaryWithObject:data forKey:@"predicate"];
-	return [messagingCenter sendMessageAndReceiveReplyName:@"_remoteApplicationsFilteredForMessage:userInfo:" userInfo:userInfo];
+	CFDataRef data = SendMessage(ALMessageIdGetApplications, (CFDataRef)[NSKeyedArchiver archivedDataWithRootObject:predicate]);
+	if (data) {
+		NSDictionary *result = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
+		CFRelease(data);
+		if ([result isKindOfClass:[NSDictionary class]]) {
+			return result;
+		}
+	}
+	return nil;
 }
 
 - (void)postNotificationWithUserInfo:(NSDictionary *)userInfo
@@ -112,12 +117,12 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 	}
 	OSSpinLockUnlock(&spinLock);
 	NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil];
-	NSDictionary *serialized = [messagingCenter sendMessageAndReceiveReplyName:@"_remoteGetIconForMessage:userInfo:" userInfo:userInfo];
-	NSData *data = [serialized objectForKey:@"result"];
+	CFDataRef data = SendMessage(ALMessageIdIconForSize, (CFDataRef)[NSPropertyListSerialization dataFromPropertyList:userInfo format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL]);
 	if (!data)
 		return NULL;
-	CGImageSourceRef imageSource = _CGImageSourceCreateWithData((CFDataRef)data, NULL);
+	CGImageSourceRef imageSource = _CGImageSourceCreateWithData(data, NULL);
 	result = _CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
+	CFRelease(data);
 	if (result) {
 		OSSpinLockLock(&spinLock);
 		[cachedIcons setObject:(id)result forKey:key];
@@ -173,14 +178,44 @@ CHDeclareClass(SBIconModel);
 
 @implementation ALApplicationListImpl
 
+static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId, CFDataRef data, void *info)
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	NSData *resultData = nil;
+	switch (messageId) {
+		case ALMessageIdGetApplications: {
+			NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:(NSData *)data];
+			NSDictionary *result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate] : [sharedApplicationList applications];
+			resultData = [NSPropertyListSerialization dataFromPropertyList:result format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
+			break;
+		}
+		case ALMessageIdIconForSize: {
+			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
+			CGImageRef result = [sharedApplicationList copyIconOfSize:[[params objectForKey:@"iconSize"] floatValue] forDisplayIdentifier:[params objectForKey:@"displayIdentifier"]];
+			if (result) {
+				resultData = [NSMutableData data];
+				CGImageDestinationRef dest = _CGImageDestinationCreateWithData((CFMutableDataRef)resultData, CFSTR("public.png"), 1, NULL);
+				_CGImageDestinationAddImage(dest, result, NULL);
+				CGImageRelease(result);
+				_CGImageDestinationFinalize(dest);
+				CFRelease(dest);
+			}
+			break;
+		}
+	}
+	if (resultData) {
+		resultData = [resultData retain];
+	}
+	[pool drain];
+	return (CFDataRef)resultData;
+}
+
 - (id)init
 {
 	if ((self = [super init])) {
-		CPDistributedMessagingCenter *center = [self messagingCenter];
-		[center runServerOnCurrentThread];
-		[center registerForMessageName:@"applications" target:self selector:@selector(applications)];
-		[center registerForMessageName:@"_remoteApplicationsFilteredForMessage:userInfo:" target:self selector:@selector(_remoteApplicationsFilteredForMessage:userInfo:)];
-		[center registerForMessageName:@"_remoteGetIconForMessage:userInfo:" target:self selector:@selector(_remoteGetIconForMessage:userInfo:)];
+		messagePort = CFMessagePortCreateLocal(kCFAllocatorDefault, CFSTR("applist.datasource"), messageServerCallback, NULL, NULL);
+		CFRunLoopSourceRef source = CFMessagePortCreateRunLoopSource(kCFAllocatorDefault, messagePort, 0);
+		CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopDefaultMode);
 	}
 	return self;
 }
@@ -193,12 +228,6 @@ CHDeclareClass(SBIconModel);
 	return result;
 }
 
-- (NSDictionary *)_remoteApplicationsFilteredForMessage:(NSString *)message userInfo:(NSDictionary *)userInfo
-{
-	NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:[userInfo objectForKey:@"predicate"]];
-	return [self applicationsFilteredUsingPredicate:predicate];
-}
-
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
@@ -208,20 +237,6 @@ CHDeclareClass(SBIconModel);
 	for (SBApplication *app in apps)
 		[result setObject:[app displayName] forKey:[app displayIdentifier]];
 	return result;
-}
-
-- (NSDictionary *)_remoteGetIconForMessage:(NSString *)message userInfo:(NSDictionary *)userInfo
-{
-	CGImageRef image = [self copyIconOfSize:[[userInfo objectForKey:@"iconSize"] unsignedIntegerValue] forDisplayIdentifier:[userInfo objectForKey:@"displayIdentifier"]];
-	if (!image)
-		return [NSDictionary dictionary];
-	NSMutableData *result = [NSMutableData data];
-	CGImageDestinationRef dest = _CGImageDestinationCreateWithData((CFMutableDataRef)result, CFSTR("public.png"), 1, NULL);
-	_CGImageDestinationAddImage(dest, image, NULL);
-	CGImageRelease(image);
-	_CGImageDestinationFinalize(dest);
-	CFRelease(dest);
-	return [NSDictionary dictionaryWithObject:result forKey:@"result"];
 }
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
@@ -276,6 +291,7 @@ CHConstructor
 	} else {
 		_CGImageSourceCreateWithData = dlsym(handle, "CGImageSourceCreateWithData");
 		_CGImageSourceCreateImageAtIndex = dlsym(handle, "CGImageSourceCreateImageAtIndex");
+		messagePort = CFMessagePortCreateRemote(kCFAllocatorDefault, CFSTR("applist.datasource"));
 		sharedApplicationList = [[ALApplicationList alloc] init];
 	}
 }
