@@ -132,10 +132,10 @@ static NSArray *hiddenDisplayIdentifiers;
 			[displayNames release];
 		}
 		[pool release];
-		[_tableView reloadData];
 	}
 	[_sectionDescriptors release];
 	_sectionDescriptors = [sectionDescriptors copy];
+	[_tableView reloadData];
 }
 
 - (void)setLocalzationBundle:(NSBundle *)localizationBundle
@@ -160,7 +160,7 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-	return [_sectionDescriptors count];
+	return [_displayIdentifiers count];
 }
 
 - (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
