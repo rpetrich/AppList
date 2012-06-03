@@ -16,6 +16,8 @@
 
 @implementation ALSwitchCell
 
+@synthesize switchView;
+
 - (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
 {
 	if ((self = [super initWithStyle:style reuseIdentifier:reuseIdentifier])) {
@@ -31,8 +33,6 @@
 	[switchView release];
 	[super dealloc];
 }
-
-@synthesize switchView = _switchView;
 
 - (void)loadValue:(id)value
 {

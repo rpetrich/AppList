@@ -33,6 +33,7 @@ static inline CFDataRef SendMessage(SInt32 messageId, CFDataRef data)
 + (UIImage *)imageWithCGImage:(CGImageRef)imageRef scale:(CGFloat)scale orientation:(int)orientation;
 @end
 
+__attribute__((visibility("hidden")))
 @interface ALApplicationListImpl : ALApplicationList
 @end
 

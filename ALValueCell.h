@@ -4,7 +4,7 @@
 
 @interface ALValueCell : UITableViewCell {
 @private
-	id<ALValueCellDelegate> _delegate;
+	id<ALValueCellDelegate> delegate;
 }
 
 @property (nonatomic, assign) id<ALValueCellDelegate> delegate;
@@ -29,8 +29,7 @@
 
 @end
 
-@interface ALCheckCell : ALValueCell {
-}
+@interface ALCheckCell : ALValueCell
 
 @end
 
