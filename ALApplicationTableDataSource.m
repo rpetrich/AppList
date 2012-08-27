@@ -138,7 +138,7 @@ static NSArray *hiddenDisplayIdentifiers;
 	[_tableView reloadData];
 }
 
-- (void)setLocalzationBundle:(NSBundle *)localizationBundle
+- (void)setLocalizationBundle:(NSBundle *)localizationBundle
 {
 	if (_localizationBundle != localizationBundle) {
 		[_localizationBundle autorelease];
