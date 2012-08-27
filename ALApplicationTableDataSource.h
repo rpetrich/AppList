@@ -6,7 +6,7 @@
 @interface ALApplicationTableDataSource : NSObject <UITableViewDataSource> {
 @private
 	ALApplicationList *appList;
-	NSArray *_sectionDescriptors;
+	NSMutableArray *_sectionDescriptors;
 	NSMutableArray *_displayIdentifiers;
 	NSMutableArray *_displayNames;
 	NSMutableArray *_iconsToLoad;
@@ -27,6 +27,10 @@
 
 - (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
+
+- (void)insertSectionDescriptor:(NSDictionary *)sectionDescriptor atIndex:(NSInteger)index;
+- (void)removeSectionDescriptorsAtIndex:(NSInteger)index;
+- (void)removeSectionDescriptorsAtIndexes:(NSIndexSet *)indexSet;
 
 @end
 

@@ -100,42 +100,69 @@ static NSArray *hiddenDisplayIdentifiers;
 @synthesize tableView = _tableView;
 @synthesize localizationBundle = _localizationBundle;
 
+- (void)_insertSectionDescriptor:(NSDictionary *)descriptor atIndex:(NSInteger)index
+{
+	NSArray *items = [descriptor objectForKey:@"items"];
+	if (items) {
+		[_displayIdentifiers insertObject:items atIndex:index];
+		[_displayNames insertObject:[NSNull null] atIndex:index];
+	} else {
+		NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
+		NSDictionary *applications;
+		if (predicateText)
+			applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
+		else
+			applications = [appList applications];
+		NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
+		if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
+			for (NSString *displayIdentifier in hiddenDisplayIdentifiers)
+				[displayIdentifiers removeObject:displayIdentifier];
+		}
+		[displayIdentifiers sortUsingFunction:DictionaryTextComparator context:applications];
+		[_displayIdentifiers insertObject:displayIdentifiers atIndex:index];
+		[displayIdentifiers release];
+		NSMutableArray *displayNames = [[NSMutableArray alloc] init];
+		for (NSString *displayId in displayIdentifiers)
+			[displayNames addObject:[applications objectForKey:displayId]];
+		[_displayNames insertObject:displayNames atIndex:index];
+		[displayNames release];
+	}
+}
+
 - (void)setSectionDescriptors:(NSArray *)sectionDescriptors
 {
 	[_displayIdentifiers removeAllObjects];
 	[_displayNames removeAllObjects];
+	NSInteger i = 0;
 	for (NSDictionary *descriptor in sectionDescriptors) {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-		NSArray *items = [descriptor objectForKey:@"items"];
-		if (items) {
-			[_displayIdentifiers addObject:items];
-			[_displayNames addObject:[NSNull null]];
-		} else {
-			NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
-			NSDictionary *applications;
-			if (predicateText)
-				applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
-			else
-				applications = [appList applications];
-			NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
-			if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
-				for (NSString *displayIdentifier in hiddenDisplayIdentifiers)
-					[displayIdentifiers removeObject:displayIdentifier];
-			}
-			[displayIdentifiers sortUsingFunction:DictionaryTextComparator context:applications];
-			[_displayIdentifiers addObject:displayIdentifiers];
-			[displayIdentifiers release];
-			NSMutableArray *displayNames = [[NSMutableArray alloc] init];
-			for (NSString *displayId in displayIdentifiers)
-				[displayNames addObject:[applications objectForKey:displayId]];
-			[_displayNames addObject:displayNames];
-			[displayNames release];
-		}
+		[self _insertSectionDescriptor:descriptor atIndex:i];
 		[pool release];
+		i++;
 	}
 	[_sectionDescriptors release];
-	_sectionDescriptors = [sectionDescriptors copy];
+	_sectionDescriptors = [sectionDescriptors mutableCopy];
 	[_tableView reloadData];
+}
+
+- (void)removeSectionDescriptorsAtIndexes:(NSIndexSet *)indexSet
+{
+	[_sectionDescriptors removeObjectsAtIndexes:indexSet];
+	[_displayIdentifiers removeObjectsAtIndexes:indexSet];
+	[_displayNames removeObjectsAtIndexes:indexSet];
+	[_tableView deleteSections:indexSet withRowAnimation:UITableViewRowAnimationMiddle];
+}
+
+- (void)removeSectionDescriptorsAtIndex:(NSInteger)index
+{
+	[self removeSectionDescriptorsAtIndexes:[NSIndexSet indexSetWithIndex:index]];
+}
+
+- (void)insertSectionDescriptor:(NSDictionary *)sectionDescriptor atIndex:(NSInteger)index
+{
+	[self _insertSectionDescriptor:sectionDescriptor atIndex:index];
+	[_sectionDescriptors insertObject:sectionDescriptor atIndex:index];
+	[_tableView insertSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationMiddle];
 }
 
 - (void)setLocalizationBundle:(NSBundle *)localizationBundle
