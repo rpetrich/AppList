@@ -166,6 +166,10 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
+	if (!_tableView) {
+		_tableView = [tableView retain];
+		NSLog(@"ALApplicationTableDataSource warning: Assumed control over %@", tableView);
+	}
 	return [_displayIdentifiers count];
 }
 
@@ -240,7 +244,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 		CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
 		if (iconSize > 0) {
 			NSString *displayIdentifier = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
-			if (_tableView == nil || [appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier]) {
+			if ([appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier]) {
 				cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
 				cell.indentationWidth = 10.0f;
 				cell.indentationLevel = 0;
