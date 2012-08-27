@@ -188,7 +188,7 @@ __attribute__((visibility("hidden")))
 	id cell = [_tableView cellForRowAtIndexPath:indexPath];
 	if ([cell respondsToSelector:@selector(didSelect)])
 		[cell didSelect];
-	id cellDescriptor = [_dataSource displayIdentifierForIndexPath:indexPath];
+	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
 	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
 		SEL action = NSSelectorFromString([[cellDescriptor objectForKey:@"action"] stringByAppendingString:@"FromCellDescriptor:"]);
 		if ([self respondsToSelector:action])
@@ -199,21 +199,23 @@ __attribute__((visibility("hidden")))
 
 - (void)cellAtIndexPath:(NSIndexPath *)indexPath didChangeToValue:(id)newValue
 {
-	NSString *displayIdentifier = [_dataSource displayIdentifierForIndexPath:indexPath];
-	if (singleEnabledMode) {
+	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
+	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
+		[settings setObject:newValue forKey:[cellDescriptor objectForKey:@"ALSettingsKey"]];
+	} else if (singleEnabledMode) {
 		if ([newValue boolValue]) {
-			[settings setObject:displayIdentifier forKey:settingsKeyPrefix];
+			[settings setObject:cellDescriptor forKey:settingsKeyPrefix];
 			for (NSIndexPath *otherIndexPath in [_tableView indexPathsForVisibleRows]) {
 				if (![otherIndexPath isEqual:indexPath]) {
 					ALValueCell *otherCell = (ALValueCell *)[_tableView cellForRowAtIndexPath:otherIndexPath];
 					[otherCell loadValue:(id)kCFBooleanFalse];
 				}
 			}
-		} else if ([[settings objectForKey:settingsKeyPrefix] isEqual:displayIdentifier]) {
+		} else if ([[settings objectForKey:settingsKeyPrefix] isEqual:cellDescriptor]) {
 			[settings removeObjectForKey:settingsKeyPrefix];
 		}
 	} else {
-		NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
+		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor];
 		[settings setObject:newValue forKey:key];
 	}
 	if (settingsPath)
@@ -224,11 +226,14 @@ __attribute__((visibility("hidden")))
 
 - (id)valueForCellAtIndexPath:(NSIndexPath *)indexPath
 {
-	NSString *displayIdentifier = [_dataSource displayIdentifierForIndexPath:indexPath];
+	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
+	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
+		return [settings objectForKey:[cellDescriptor objectForKey:@"ALSettingsKey"]] ?: [cellDescriptor objectForKey:@"ALSettingsDefaultValue"];
+	}
 	if (singleEnabledMode) {
-		return [[settings objectForKey:settingsKeyPrefix] isEqualToString:displayIdentifier] ? (id)kCFBooleanTrue : (id)kCFBooleanFalse;
+		return [[settings objectForKey:settingsKeyPrefix] isEqualToString:cellDescriptor] ? (id)kCFBooleanTrue : (id)kCFBooleanFalse;
 	} else {
-		NSString *key = [settingsKeyPrefix stringByAppendingString:displayIdentifier];
+		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor];
 		return [settings objectForKey:key] ?: settingsDefaultValue;
 	}
 }

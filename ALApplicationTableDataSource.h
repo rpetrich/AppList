@@ -25,6 +25,7 @@
 @property (nonatomic, retain) UITableView *tableView;
 @property (nonatomic, retain) NSBundle *localizationBundle;
 
+- (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 
 @end

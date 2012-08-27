@@ -153,9 +153,15 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 }
 #define Localize(string) Localize(_localizationBundle, string)
 
-- (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath
+- (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath;
 {
 	return [[_displayIdentifiers objectAtIndex:[indexPath section]] objectAtIndex:[indexPath row]];
+}
+
+- (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath
+{
+	id result = [[_displayIdentifiers objectAtIndex:[indexPath section]] objectAtIndex:[indexPath row]];
+	return [result isKindOfClass:[NSString class]] ? result : nil;
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
@@ -198,19 +204,23 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 	[pool drain];
 }
 
+static inline UITableViewCell *CellWithClassName(NSString *className, UITableView *tableView)
+{
+	return [tableView dequeueReusableCellWithIdentifier:className] ?: [[[NSClassFromString(className) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:className] autorelease];
+}
+
+#define CellWithClassName(className) \
+	CellWithClassName(className, tableView)
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
 	NSUInteger section = [indexPath section];
 	NSUInteger row = [indexPath row];
-	NSDictionary *sectionDescriptor = [_sectionDescriptors objectAtIndex:section];
-	NSString *cellClassName = [sectionDescriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell";
-	UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:cellClassName];
-	if (!cell) {
-		cell = [[[NSClassFromString(cellClassName) alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cellClassName] autorelease];
-	}
 	id displayNames = [_displayNames objectAtIndex:section];
+	NSDictionary *sectionDescriptor = [_sectionDescriptors objectAtIndex:section];
 	if (displayNames == [NSNull null]) {
 		NSDictionary *itemDescriptor = [[_displayIdentifiers objectAtIndex:section] objectAtIndex:row];
+		UITableViewCell *cell = CellWithClassName([itemDescriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: [sectionDescriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell");
 		cell.textLabel.text = Localize([itemDescriptor objectForKey:ALItemDescriptorTextKey]);
 		cell.detailTextLabel.text = Localize([itemDescriptor objectForKey:ALItemDescriptorDetailTextKey]);
 		NSString *imagePath = [itemDescriptor objectForKey:ALItemDescriptorImageKey];
@@ -223,7 +233,9 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 				image = [UIImage imageWithContentsOfFile:imagePath];
 		}
 		cell.imageView.image = image;
+		return cell;
 	} else {
+		UITableViewCell *cell = CellWithClassName([sectionDescriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell");
 		cell.textLabel.text = [displayNames objectAtIndex:row];
 		CGFloat iconSize = [[sectionDescriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
 		if (iconSize > 0) {
@@ -259,8 +271,8 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 		} else {
 			cell.imageView.image = nil;
 		}
+		return cell;
 	}
-	return cell;
 }
 
 - (void)iconLoadedFromNotification:(NSNotification *)notification
