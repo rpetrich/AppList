@@ -13,6 +13,7 @@ __attribute__((visibility("hidden")))
 	ALApplicationTableDataSource *_dataSource;
 	UITableView *_tableView;
 	NSString *_navigationTitle;
+    NSArray *descriptors;
 	id settingsDefaultValue;
 	NSString *settingsPath;
 	NSMutableDictionary *settings;
@@ -120,12 +121,45 @@ __attribute__((visibility("hidden")))
 		[[self navigationItem] setTitle:_navigationTitle];
 }
 
+- (void)_updateSections
+{
+    NSInteger index = 0;
+
+    for (NSDictionary *descriptor in descriptors) {
+        BOOL visible = YES;
+        BOOL already = YES;
+
+        NSString *predicateFormat = [descriptor objectForKey:ALSectionDescriptorVisibilityPredicateKey];
+        if (predicateFormat != nil) {
+            NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat];
+
+            visible = [predicate evaluateWithObject:settings];
+            already = [[_dataSource sectionDescriptors] containsObject:descriptor];
+        }
+
+        if (visible) {
+            if (!already) {
+                [_dataSource insertSectionDescriptor:descriptor atIndex:index];
+            }
+
+            index++;
+        } else {
+            if (already) {
+                NSInteger alreadyIndex = [[_dataSource sectionDescriptors] indexOfObject:descriptor];
+                [_dataSource removeSectionDescriptorAtIndex:alreadyIndex];
+            }
+        }
+    }
+}
+
 - (void)loadFromSpecifier:(PSSpecifier *)specifier
 {
 	[self setNavigationTitle:[specifier propertyForKey:@"ALNavigationTitle"] ?: [specifier name]];
 	singleEnabledMode = [[specifier propertyForKey:@"ALSingleEnabledMode"] boolValue];
-	NSArray *descriptors = [specifier propertyForKey:@"ALSectionDescriptors"];
-	if (!descriptors) {
+
+    [descriptors release];
+	descriptors = [specifier propertyForKey:@"ALSectionDescriptors"];
+	if (descriptors == nil) {
 		NSString *defaultCellClass = singleEnabledMode ? @"ALCheckCell" : @"ALSwitchCell";
 		NSNumber *iconSize = [NSNumber numberWithUnsignedInteger:ALApplicationIconSizeSmall];
 		descriptors = [NSArray arrayWithObjects:
@@ -144,19 +178,29 @@ __attribute__((visibility("hidden")))
 		nil];
 	}
 	[_dataSource setSectionDescriptors:descriptors];
+    [descriptors retain];
+
 	NSString *bundlePath = [specifier propertyForKey:@"ALLocalizationBundle"];
 	_dataSource.localizationBundle = bundlePath ? [NSBundle bundleWithPath:bundlePath] : nil;
+
 	[settingsDefaultValue release];
 	settingsDefaultValue = [[specifier propertyForKey:@"ALSettingsDefaultValue"] retain];
+
 	[settingsPath release];
 	settingsPath = [[specifier propertyForKey:@"ALSettingsPath"] retain];
+
 	[settingsKeyPrefix release];
 	settingsKeyPrefix = [[specifier propertyForKey:singleEnabledMode ? @"ALSettingsKey" : @"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
+
 	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
+
 	[settingsChangeNotification release];
 	settingsChangeNotification = [[specifier propertyForKey:@"ALChangeNotification"] retain];
+
 	id temp = [specifier propertyForKey:@"ALAllowsSelection"];
 	[_tableView setAllowsSelection:temp ? [temp boolValue] : singleEnabledMode];
+
+    [self _updateSections];
 	[_tableView reloadData];
 }
 
@@ -222,6 +266,7 @@ __attribute__((visibility("hidden")))
 		[settings writeToFile:settingsPath atomically:YES];
 	if (settingsChangeNotification)
 		notify_post([settingsChangeNotification UTF8String]);
+    [self _updateSections];
 }
 
 - (id)valueForCellAtIndexPath:(NSIndexPath *)indexPath

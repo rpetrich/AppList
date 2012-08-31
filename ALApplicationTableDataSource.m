@@ -12,6 +12,7 @@ const NSString *ALSectionDescriptorCellClassNameKey = @"cell-class-name";
 const NSString *ALSectionDescriptorIconSizeKey = @"icon-size";
 const NSString *ALSectionDescriptorItemsKey = @"items";
 const NSString *ALSectionDescriptorSuppressHiddenAppsKey = @"suppress-hidden-apps";
+const NSString *ALSectionDescriptorVisibilityPredicateKey = @"visibility-predicate";
 
 const NSString *ALItemDescriptorTextKey = @"text";
 const NSString *ALItemDescriptorDetailTextKey = @"detail-text";
@@ -150,10 +151,10 @@ static NSArray *hiddenDisplayIdentifiers;
 	[_sectionDescriptors removeObjectsAtIndexes:indexSet];
 	[_displayIdentifiers removeObjectsAtIndexes:indexSet];
 	[_displayNames removeObjectsAtIndexes:indexSet];
-	[_tableView deleteSections:indexSet withRowAnimation:UITableViewRowAnimationMiddle];
+	[_tableView deleteSections:indexSet withRowAnimation:UITableViewRowAnimationFade];
 }
 
-- (void)removeSectionDescriptorsAtIndex:(NSInteger)index
+- (void)removeSectionDescriptorAtIndex:(NSInteger)index
 {
 	[self removeSectionDescriptorsAtIndexes:[NSIndexSet indexSetWithIndex:index]];
 }
@@ -162,7 +163,7 @@ static NSArray *hiddenDisplayIdentifiers;
 {
 	[self _insertSectionDescriptor:sectionDescriptor atIndex:index];
 	[_sectionDescriptors insertObject:sectionDescriptor atIndex:index];
-	[_tableView insertSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationMiddle];
+	[_tableView insertSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationFade];
 }
 
 - (void)setLocalizationBundle:(NSBundle *)localizationBundle

@@ -29,7 +29,7 @@
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 
 - (void)insertSectionDescriptor:(NSDictionary *)sectionDescriptor atIndex:(NSInteger)index;
-- (void)removeSectionDescriptorsAtIndex:(NSInteger)index;
+- (void)removeSectionDescriptorAtIndex:(NSInteger)index;
 - (void)removeSectionDescriptorsAtIndexes:(NSIndexSet *)indexSet;
 
 @end
@@ -40,6 +40,7 @@ extern const NSString *ALSectionDescriptorPredicateKey;
 extern const NSString *ALSectionDescriptorCellClassNameKey;
 extern const NSString *ALSectionDescriptorIconSizeKey;
 extern const NSString *ALSectionDescriptorSuppressHiddenAppsKey;
+extern const NSString *ALSectionDescriptorVisibilityPredicateKey;
 
 extern const NSString *ALItemDescriptorTextKey;
 extern const NSString *ALItemDescriptorDetailTextKey;
