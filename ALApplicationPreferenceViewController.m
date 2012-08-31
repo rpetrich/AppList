@@ -124,29 +124,24 @@ __attribute__((visibility("hidden")))
 - (void)_updateSections
 {
     NSInteger index = 0;
-
     for (NSDictionary *descriptor in descriptors) {
-        BOOL visible = YES;
-        BOOL already = YES;
-
         NSString *predicateFormat = [descriptor objectForKey:ALSectionDescriptorVisibilityPredicateKey];
-        if (predicateFormat != nil) {
-            NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat];
-
-            visible = [predicate evaluateWithObject:settings];
-            already = [[_dataSource sectionDescriptors] containsObject:descriptor];
+        if (!predicateFormat) {
+        	index++;
+        	continue;
         }
-
+        NSPredicate *predicate = [NSPredicate predicateWithFormat:predicateFormat];
+        BOOL visible = [predicate evaluateWithObject:settings];
+        NSArray *existingDescriptors = [_dataSource sectionDescriptors];
+        BOOL already = [existingDescriptors count] > index ? [existingDescriptors objectAtIndex:index] == descriptor : NO;
         if (visible) {
             if (!already) {
                 [_dataSource insertSectionDescriptor:descriptor atIndex:index];
             }
-
             index++;
         } else {
             if (already) {
-                NSInteger alreadyIndex = [[_dataSource sectionDescriptors] indexOfObject:descriptor];
-                [_dataSource removeSectionDescriptorAtIndex:alreadyIndex];
+                [_dataSource removeSectionDescriptorAtIndex:index];
             }
         }
     }
