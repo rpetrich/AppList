@@ -6,6 +6,16 @@
 #import <CaptainHook/CaptainHook.h>
 #import <dlfcn.h>
 
+@interface SBIconViewMap : NSObject {
+	SBIconModel *_model;
+	// ...
+}
++ (SBIconViewMap *)switcherMap;
++ (SBIconViewMap *)homescreenMap;
+- (SBIconModel *)iconModel;
+@end
+
+
 NSString *const ALIconLoadedNotification = @"ALIconLoadedNotification";
 NSString *const ALDisplayIdentifierKey = @"ALDisplayIdentifier";
 NSString *const ALIconSizeKey = @"ALIconSize";
@@ -196,6 +206,7 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 
 CHDeclareClass(SBApplicationController);
 CHDeclareClass(SBIconModel);
+CHDeclareClass(SBIconViewMap);
 
 @interface SBIcon ()
 
@@ -303,7 +314,7 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
 	SBIcon *icon;
-	SBIconModel *iconModel = CHSharedInstance(SBIconModel);
+	SBIconModel *iconModel = [CHClass(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)] ? [[CHClass(SBIconViewMap) homescreenMap] iconModel] : CHSharedInstance(SBIconModel);
 	if ([iconModel respondsToSelector:@selector(applicationIconForDisplayIdentifier:)])
 		icon = [iconModel applicationIconForDisplayIdentifier:displayIdentifier];
 	else if ([iconModel respondsToSelector:@selector(iconForDisplayIdentifier:)])
@@ -344,6 +355,7 @@ CHConstructor
 	if (!handle)
 		return;
 	if (CHLoadLateClass(SBIconModel)) {
+		CHLoadLateClass(SBIconViewMap);
 		CHLoadLateClass(SBApplicationController);
 		_CGImageDestinationCreateWithData = dlsym(handle, "CGImageDestinationCreateWithData");
 		_CGImageDestinationAddImage = dlsym(handle, "CGImageDestinationAddImage");
