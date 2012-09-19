@@ -42,7 +42,18 @@ static NSArray *hiddenDisplayIdentifiers;
 		                            @"com.apple.TrustMe",
 		                            @"com.apple.WebSheet",
 		                            @"com.apple.springboard",
-                                            @"com.apple.purplebuddy",
+                                    @"com.apple.purplebuddy",
+                                    @"com.apple.datadetectors.DDActionsService",
+                                    @"com.apple.FacebookAccountMigrationDialog",
+                                    @"com.apple.iad.iAdOptOut",
+                                    @"com.apple.ios.StoreKitUIService",
+                                    @"com.apple.TextInput.kbd",
+                                    @"com.apple.MailCompositionService",
+                                    @"com.apple.mobilesms.compose",
+                                    @"com.apple.quicklook.quicklookd",
+                                    @"com.apple.ShoeboxUIService",
+                                    @"com.apple.social.remoteui.SocialUIService",
+                                    @"com.apple.WebViewService",
 		                            nil];
 	}
 }
