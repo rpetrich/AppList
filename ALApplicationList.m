@@ -218,7 +218,15 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 		}
 		case ALMessageIdIconForSize: {
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
-			CGImageRef result = [sharedApplicationList copyIconOfSize:[[params objectForKey:@"iconSize"] floatValue] forDisplayIdentifier:[params objectForKey:@"displayIdentifier"]];
+			if (![params isKindOfClass:[NSDictionary class]])
+				break;
+			id iconSize = [params objectForKey:@"iconSize"];
+			if (![iconSize respondsToSelector:@selector(floatValue)])
+				break;
+			NSString *displayIdentifier = [params objectForKey:@"displayIdentifier"];
+			if (![displayIdentifier isKindOfClass:[NSString class]])
+				break;
+			CGImageRef result = [sharedApplicationList copyIconOfSize:[iconSize floatValue] forDisplayIdentifier:displayIdentifier];
 			if (result) {
 				resultData = [NSMutableData data];
 				CGImageDestinationRef dest = _CGImageDestinationCreateWithData((CFMutableDataRef)resultData, CFSTR("public.png"), 1, NULL);
