@@ -29,7 +29,7 @@ static NSArray *hiddenDisplayIdentifiers;
 
 + (void)initialize
 {
-	if ((self == [ALApplicationTableDataSource class])) {
+	if (self == [ALApplicationTableDataSource class]) {
 		hiddenDisplayIdentifiers = [[NSArray alloc] initWithObjects:
 		                            @"com.apple.AdSheet",
 		                            @"com.apple.AdSheetPhone",

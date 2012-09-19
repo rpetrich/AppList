@@ -6,6 +6,7 @@
 #import <Preferences/Preferences.h>
 
 #include <notify.h>
+#include <objc/message.h>
 
 __attribute__((visibility("hidden")))
 @interface ALApplicationPreferenceViewController : PSViewController<UITableViewDelegate> {
