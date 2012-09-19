@@ -163,12 +163,14 @@ __attribute__((visibility("hidden")))
 				@"isSystemApplication = TRUE", ALSectionDescriptorPredicateKey,
 				defaultCellClass, ALSectionDescriptorCellClassNameKey,
 				iconSize, ALSectionDescriptorIconSizeKey,
+				(id)kCFBooleanTrue, ALSectionDescriptorSuppressHiddenAppsKey,
 			nil],
 			[NSDictionary dictionaryWithObjectsAndKeys:
 				@"User Applications", ALSectionDescriptorTitleKey,
 				@"isSystemApplication = FALSE", ALSectionDescriptorPredicateKey,
 				defaultCellClass, ALSectionDescriptorCellClassNameKey,
 				iconSize, ALSectionDescriptorIconSizeKey,
+				(id)kCFBooleanTrue, ALSectionDescriptorSuppressHiddenAppsKey,
 			nil],
 		nil];
 	}
