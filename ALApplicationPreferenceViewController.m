@@ -78,7 +78,7 @@ __attribute__((visibility("hidden")))
 
 - (id)initForContentSize:(CGSize)size
 {
-	if ([[PSViewController class] instancesRespondToSelector:@selector(initForContentSize:)])
+	if ([PSViewController instancesRespondToSelector:@selector(initForContentSize:)])
 		self = [super initForContentSize:size];
 	else
 		self = [super init];
