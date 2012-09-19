@@ -44,33 +44,6 @@ __attribute__((visibility("hidden")))
 
 @end
 
-@implementation ALPreferencesTableDataSource
-
-- (id)initWithController:(ALApplicationPreferenceViewController *)controller
-{
-	if ((self = [super init])) {
-		_controller = controller;
-	}
-	return self;
-}
-
-- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
-{
-	id cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
-	if ([cell isKindOfClass:[ALValueCell class]]) {
-		[cell setDelegate:self];
-		[cell loadValue:[_controller valueForCellAtIndexPath:indexPath]];
-	}
-	return cell;
-}
-
-- (void)valueCell:(ALValueCell *)valueCell didChangeToValue:(id)newValue
-{
-	[_controller cellAtIndexPath:[self.tableView indexPathForCell:valueCell] didChangeToValue:newValue];
-}
-
-@end
-
 @interface PSViewController (OS32)
 - (void)setSpecifier:(PSSpecifier *)specifier;
 @end
@@ -295,6 +268,33 @@ __attribute__((visibility("hidden")))
 - (UITableView *)table
 {
 	return nil;
+}
+
+@end
+
+@implementation ALPreferencesTableDataSource
+
+- (id)initWithController:(ALApplicationPreferenceViewController *)controller
+{
+	if ((self = [super init])) {
+		_controller = controller;
+	}
+	return self;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+	id cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+	if ([cell isKindOfClass:[ALValueCell class]]) {
+		[cell setDelegate:self];
+		[cell loadValue:[_controller valueForCellAtIndexPath:indexPath]];
+	}
+	return cell;
+}
+
+- (void)valueCell:(ALValueCell *)valueCell didChangeToValue:(id)newValue
+{
+	[_controller cellAtIndexPath:[self.tableView indexPathForCell:valueCell] didChangeToValue:newValue];
 }
 
 @end
