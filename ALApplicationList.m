@@ -12,7 +12,9 @@ NSString *const ALIconSizeKey = @"ALIconSize";
 
 enum {
 	ALMessageIdGetApplications,
-	ALMessageIdIconForSize
+	ALMessageIdIconForSize,
+	ALMessageIdValueForKey,
+	ALMessageIdValueForKeyPath
 };
 
 static CFMessagePortRef messagePort;
@@ -97,6 +99,30 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 		if ([result isKindOfClass:[NSDictionary class]]) {
 			return result;
 		}
+	}
+	return nil;
+}
+
+- (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	NSData *inputData = [NSPropertyListSerialization dataFromPropertyList:[NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil] format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
+	CFDataRef data = SendMessage(ALMessageIdValueForKeyPath, (CFDataRef)inputData);
+	if (data) {
+		id result = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
+		CFRelease(data);
+		return result;
+	}
+	return nil;
+}
+
+- (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	NSData *inputData = [NSPropertyListSerialization dataFromPropertyList:[NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil] format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
+	CFDataRef data = SendMessage(ALMessageIdValueForKey, (CFDataRef)inputData);
+	if (data) {
+		id result = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
+		CFRelease(data);
+		return result;
 	}
 	return nil;
 }
@@ -203,10 +229,24 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 			}
 			break;
 		}
+		case ALMessageIdValueForKeyPath:
+		case ALMessageIdValueForKey: {
+			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
+			if (![params isKindOfClass:[NSDictionary class]])
+				break;
+			NSString *key = [params objectForKey:@"key"];
+			Class stringClass = [NSString class];
+			if (![key isKindOfClass:stringClass])
+				break;
+			NSString *displayIdentifier = [params objectForKey:@"displayIdentifier"];
+			if (![displayIdentifier isKindOfClass:stringClass])
+				break;
+			id result = messageId == ALMessageIdValueForKeyPath ? [sharedApplicationList valueForKeyPath:key forDisplayIdentifier:displayIdentifier] : [sharedApplicationList valueForKey:key forDisplayIdentifier:displayIdentifier];
+			resultData = [NSPropertyListSerialization dataFromPropertyList:result format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
+			break;
+		}
 	}
-	if (resultData) {
-		resultData = [resultData retain];
-	}
+	resultData = [resultData retain];
 	[pool drain];
 	return (CFDataRef)resultData;
 }
@@ -238,6 +278,18 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 	for (SBApplication *app in apps)
 		[result setObject:[app displayName] forKey:[app displayIdentifier]];
 	return result;
+}
+
+- (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	return [app valueForKeyPath:keyPath];
+}
+
+- (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	return [app valueForKey:keyPath];
 }
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
