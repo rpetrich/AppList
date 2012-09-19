@@ -291,7 +291,7 @@ __attribute__((visibility("hidden")))
 
 - (UITableView *)table
 {
-	return _tableView;
+	return nil;
 }
 
 @end
