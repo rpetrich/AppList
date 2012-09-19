@@ -54,6 +54,7 @@ static NSArray *hiddenDisplayIdentifiers;
                                     @"com.apple.ShoeboxUIService",
                                     @"com.apple.social.remoteui.SocialUIService",
                                     @"com.apple.WebViewService",
+                                    @"com.apple.gamecenter.GameCenterUIService",
 		                            nil];
 	}
 }
