@@ -9,6 +9,7 @@ LIBRARY_NAME = libapplist
 libapplist_OBJC_FILES = ALApplicationList.m ALApplicationTableDataSource.m ALValueCell.m
 libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
 libapplist_PRIVATE_FRAMEWORKS = AppSupport
+libapplist_ARCHS = armv6 armv7
 
 BUNDLE_NAME = AppList
 AppList_OBJC_FILES = ALApplicationPreferenceViewController.m
@@ -19,6 +20,7 @@ AppList_LIBRARIES = applist
 AppList_INSTALL_PATH = /System/Library/PreferenceBundles
 
 TARGET_IPHONEOS_DEPLOYMENT_VERSION = 3.0
+ARCHS = armv6
 
 include framework/makefiles/common.mk
 include framework/makefiles/library.mk
