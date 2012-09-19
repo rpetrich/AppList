@@ -289,4 +289,9 @@ __attribute__((visibility("hidden")))
 	[[UIApplication sharedApplication] openURL:[NSURL URLWithString:[cellDescriptor objectForKey:@"url"]]];
 }
 
+- (UITableView *)table
+{
+	return _tableView;
+}
+
 @end
