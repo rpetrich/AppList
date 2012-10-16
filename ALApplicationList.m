@@ -158,8 +158,10 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 	if (!data)
 		return NULL;
 	CGImageSourceRef imageSource = _CGImageSourceCreateWithData(data, NULL);
-	result = _CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
 	CFRelease(data);
+	if (!imageSource)
+		CFRelease(imageSource);
+	result = _CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
 	if (result) {
 		OSSpinLockLock(&spinLock);
 		[cachedIcons setObject:(id)result forKey:key];
@@ -241,10 +243,12 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 			if (result) {
 				resultData = [NSMutableData data];
 				CGImageDestinationRef dest = _CGImageDestinationCreateWithData((CFMutableDataRef)resultData, CFSTR("public.png"), 1, NULL);
-				_CGImageDestinationAddImage(dest, result, NULL);
+				if (dest) {
+					_CGImageDestinationAddImage(dest, result, NULL);
+					_CGImageDestinationFinalize(dest);
+					CFRelease(dest);
+				}
 				CGImageRelease(result);
-				_CGImageDestinationFinalize(dest);
-				CFRelease(dest);
 			}
 			break;
 		}
