@@ -30,7 +30,8 @@ enum {
 	ALMessageIdGetApplications,
 	ALMessageIdIconForSize,
 	ALMessageIdValueForKey,
-	ALMessageIdValueForKeyPath
+	ALMessageIdValueForKeyPath,
+	ALMessageIdGetApplicationCount
 };
 
 static LMConnection connection = {
@@ -86,6 +87,18 @@ static ALApplicationList *sharedApplicationList;
 	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[cachedIcons release];
 	[super dealloc];
+}
+
+- (NSInteger)applicationCount
+{
+	LMResponseBuffer buffer;
+	LMConnectionSendTwoWay(&connection, ALMessageIdGetApplicationCount, NULL, 0, &buffer);
+	return LMResponseConsumeInteger(&buffer);
+}
+
+- (NSString *)description
+{
+	return [NSString stringWithFormat:@"<ALApplicationList: %p applicationCount=%d>", self, self.applicationCount];
 }
 
 - (void)didReceiveMemoryWarning
@@ -248,6 +261,10 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			LMSendPropertyListReply(replyPort, result);
 			return;
 		}
+		case ALMessageIdGetApplicationCount: {
+			LMSendIntegerReply(replyPort, [sharedApplicationList applicationCount]);
+			return;
+		}
 	}
 	LMSendReply(replyPort, NULL, 0);
 }
@@ -297,6 +314,11 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
 		[result setObject:[app displayName] forKey:[app displayIdentifier]];
 	return result;
+}
+
+- (NSInteger)applicationCount
+{
+	return [[CHSharedInstance(SBApplicationController) allApplications] count];
 }
 
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate

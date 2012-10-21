@@ -190,6 +190,11 @@ static inline kern_return_t LMSendReply(mach_port_t replyPort, const void *data,
 	return err;
 }
 
+static inline kern_return_t LMSendIntegerReply(mach_port_t replyPort, int integer)
+{
+	return LMSendReply(replyPort, &integer, sizeof(integer));
+}
+
 static inline kern_return_t LMSendCFDataReply(mach_port_t replyPort, CFDataRef data)
 {
 	if (data) {
@@ -232,6 +237,12 @@ static inline kern_return_t LMConnectionSendTwoWayData(LMConnectionRef connectio
 		return LMConnectionSendTwoWay(connection, messageId, CFDataGetBytePtr(data), CFDataGetLength(data), buffer);
 	else
 		return LMConnectionSendTwoWay(connection, messageId, NULL, 0, buffer);
+}
+
+static inline int LMResponseConsumeInteger(LMResponseBuffer *buffer)
+{
+	LMResponseBufferFree(buffer);
+	return LMMessageGetDataLength(&buffer->message) == sizeof(int) ? *(int *)buffer->message.bytes : 0;
 }
 
 #ifdef __OBJC__
