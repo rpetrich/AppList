@@ -7,6 +7,7 @@ else
 
 LIBRARY_NAME = libapplist
 libapplist_OBJC_FILES = ALApplicationList.m ALApplicationTableDataSource.m ALValueCell.m
+libapplist_CFLAGS = -I./
 libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
 libapplist_PRIVATE_FRAMEWORKS = AppSupport
 libapplist_ARCHS = armv6 armv7

@@ -6,6 +6,12 @@
 #import <CaptainHook/CaptainHook.h>
 #import <dlfcn.h>
 
+#import "LightMessaging.h"
+
+CHDeclareClass(SBApplicationController);
+CHDeclareClass(SBIconModel);
+CHDeclareClass(SBIconViewMap);
+
 @interface SBIconViewMap : NSObject {
 	SBIconModel *_model;
 	// ...
@@ -27,15 +33,10 @@ enum {
 	ALMessageIdValueForKeyPath
 };
 
-static CFMessagePortRef messagePort;
-static inline CFDataRef SendMessage(SInt32 messageId, CFDataRef data)
-{
-	if (!CFMessagePortIsValid(messagePort))
-		messagePort = CFMessagePortCreateRemote(kCFAllocatorDefault, CFSTR("applist.datasource"));
-	CFDataRef outData = NULL;
-	CFMessagePortSendRequest(messagePort, messageId, data, 45.0, 45.0, CFSTR("applist.waiting-on-datasource"), &outData);
-	return outData;
-}
+static LMConnection connection = {
+	MACH_PORT_NULL,
+	"applist.datasource"
+};
 
 @interface SBIconModel ()
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
@@ -51,15 +52,14 @@ __attribute__((visibility("hidden")))
 
 static ALApplicationList *sharedApplicationList;
 
-// Can't late-bind and still support iOS3.0 :(
-static bool (*_CGImageDestinationFinalize)(CGImageDestinationRef idst);
-static CGImageDestinationRef (*_CGImageDestinationCreateWithData)(CFMutableDataRef data, CFStringRef type, size_t count, CFDictionaryRef options);
-static void (*_CGImageDestinationAddImage)(CGImageDestinationRef idst, CGImageRef image, CFDictionaryRef properties);
-static CGImageSourceRef (*_CGImageSourceCreateWithData)(CFDataRef data, CFDictionaryRef options);
-static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, size_t index, CFDictionaryRef options);
-
-
 @implementation ALApplicationList
+
++ (void)initialize
+{
+	if (self == [ALApplicationList class] && !CHClass(SBIconModel)) {
+		sharedApplicationList = [[self alloc] init];
+	}
+}
 
 + (ALApplicationList *)sharedApplicationList
 {
@@ -102,39 +102,28 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
-	CFDataRef data = SendMessage(ALMessageIdGetApplications, (CFDataRef)[NSKeyedArchiver archivedDataWithRootObject:predicate]);
-	if (data) {
-		NSDictionary *result = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
-		CFRelease(data);
-		if ([result isKindOfClass:[NSDictionary class]]) {
-			return result;
-		}
-	}
-	return nil;
+	LMResponseBuffer buffer;
+	LMConnectionSendTwoWayData(&connection, ALMessageIdGetApplications, (CFDataRef)[NSKeyedArchiver archivedDataWithRootObject:predicate], &buffer);
+	id result = LMResponseConsumePropertyList(&buffer);
+	return [result isKindOfClass:[NSDictionary class]] ? result : nil;
 }
 
 - (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	NSData *inputData = [NSPropertyListSerialization dataFromPropertyList:[NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil] format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
-	CFDataRef data = SendMessage(ALMessageIdValueForKeyPath, (CFDataRef)inputData);
-	if (data) {
-		id result = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
-		CFRelease(data);
-		return result;
-	}
-	return nil;
+	if (!keyPath || !displayIdentifier)
+		return nil;
+	LMResponseBuffer buffer;
+	LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdValueForKeyPath, [NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil], &buffer);
+	return LMResponseConsumePropertyList(&buffer);
 }
 
-- (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+- (id)valueForKey:(NSString *)key forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	NSData *inputData = [NSPropertyListSerialization dataFromPropertyList:[NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil] format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
-	CFDataRef data = SendMessage(ALMessageIdValueForKey, (CFDataRef)inputData);
-	if (data) {
-		id result = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
-		CFRelease(data);
-		return result;
-	}
-	return nil;
+	if (!key || !displayIdentifier)
+		return nil;
+	LMResponseBuffer buffer;
+	LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdValueForKey, [NSDictionary dictionaryWithObjectsAndKeys:key, @"key", displayIdentifier, @"displayIdentifier", nil], &buffer);
+	return LMResponseConsumePropertyList(&buffer);
 }
 
 - (void)postNotificationWithUserInfo:(NSDictionary *)userInfo
@@ -153,30 +142,23 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 		return result;
 	}
 	OSSpinLockUnlock(&spinLock);
-	NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil];
-	CFDataRef data = SendMessage(ALMessageIdIconForSize, (CFDataRef)[NSPropertyListSerialization dataFromPropertyList:userInfo format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL]);
-	if (!data)
+	LMResponseBuffer buffer;
+	LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdIconForSize, [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil], &buffer);
+	result = [LMResponseConsumeImage(&buffer) CGImage];
+	if (!result)
 		return NULL;
-	CGImageSourceRef imageSource = _CGImageSourceCreateWithData(data, NULL);
-	CFRelease(data);
-	if (!imageSource)
-		CFRelease(imageSource);
-	result = _CGImageSourceCreateImageAtIndex(imageSource, 0, NULL);
-	if (result) {
-		OSSpinLockLock(&spinLock);
-		[cachedIcons setObject:(id)result forKey:key];
-		OSSpinLockUnlock(&spinLock);
-		NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
-		                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
-		                          displayIdentifier, ALDisplayIdentifierKey,
-		                          nil];
-		if ([NSThread isMainThread])
-			[self postNotificationWithUserInfo:userInfo];
-		else
-			[self performSelectorOnMainThread:@selector(postNotificationWithUserInfo:) withObject:userInfo waitUntilDone:YES];
-	}
-	CFRelease(imageSource);
-	return result;
+	OSSpinLockLock(&spinLock);
+	[cachedIcons setObject:(id)result forKey:key];
+	OSSpinLockUnlock(&spinLock);
+	NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
+	                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
+	                          displayIdentifier, ALDisplayIdentifierKey,
+	                          nil];
+	if ([NSThread isMainThread])
+		[self postNotificationWithUserInfo:userInfo];
+	else
+		[self performSelectorOnMainThread:@selector(postNotificationWithUserInfo:) withObject:userInfo waitUntilDone:YES];
+	return CGImageRetain(result);
 }
 
 - (UIImage *)iconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
@@ -206,10 +188,6 @@ static CGImageRef (*_CGImageSourceCreateImageAtIndex)(CGImageSourceRef isrc, siz
 
 @end
 
-CHDeclareClass(SBApplicationController);
-CHDeclareClass(SBIconModel);
-CHDeclareClass(SBIconViewMap);
-
 @interface SBIcon ()
 
 - (UIImage *)getIconImage:(NSInteger)sizeIndex;
@@ -218,18 +196,23 @@ CHDeclareClass(SBIconViewMap);
 
 @implementation ALApplicationListImpl
 
-static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId, CFDataRef data, void *info)
+static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef data)
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	NSData *resultData = nil;
 	switch (messageId) {
 		case ALMessageIdGetApplications: {
-			NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:(NSData *)data];
-			NSDictionary *result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate] : [sharedApplicationList applications];
-			resultData = [NSPropertyListSerialization dataFromPropertyList:result format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
-			break;
+			NSDictionary *result;
+			if (data) {
+				NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:(NSData *)data];
+				result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate] : [sharedApplicationList applications];
+			} else {
+				result = [sharedApplicationList applications];
+			}
+			LMSendPropertyListReply(replyPort, result);
+			return;
 		}
 		case ALMessageIdIconForSize: {
+			if (!data)
+				break;
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
 			if (![params isKindOfClass:[NSDictionary class]])
 				break;
@@ -241,19 +224,16 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 				break;
 			CGImageRef result = [sharedApplicationList copyIconOfSize:[iconSize floatValue] forDisplayIdentifier:displayIdentifier];
 			if (result) {
-				resultData = [NSMutableData data];
-				CGImageDestinationRef dest = _CGImageDestinationCreateWithData((CFMutableDataRef)resultData, CFSTR("public.png"), 1, NULL);
-				if (dest) {
-					_CGImageDestinationAddImage(dest, result, NULL);
-					_CGImageDestinationFinalize(dest);
-					CFRelease(dest);
-				}
+				LMSendImageReply(replyPort, [UIImage imageWithCGImage:result]);
 				CGImageRelease(result);
+				return;
 			}
 			break;
 		}
 		case ALMessageIdValueForKeyPath:
 		case ALMessageIdValueForKey: {
+			if (!data)
+				break;
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
 			if (![params isKindOfClass:[NSDictionary class]])
 				break;
@@ -265,24 +245,51 @@ static CFDataRef messageServerCallback(CFMessagePortRef local, SInt32 messageId,
 			if (![displayIdentifier isKindOfClass:stringClass])
 				break;
 			id result = messageId == ALMessageIdValueForKeyPath ? [sharedApplicationList valueForKeyPath:key forDisplayIdentifier:displayIdentifier] : [sharedApplicationList valueForKey:key forDisplayIdentifier:displayIdentifier];
-			resultData = [NSPropertyListSerialization dataFromPropertyList:result format:NSPropertyListBinaryFormat_v1_0 errorDescription:NULL];
-			break;
+			LMSendPropertyListReply(replyPort, result);
+			return;
 		}
 	}
-	resultData = [resultData retain];
-	[pool drain];
-	return (CFDataRef)resultData;
+	LMSendReply(replyPort, NULL, 0);
 }
 
+static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void *info)
+{
+	LMMessage *request = bytes;
+	if (size < sizeof(LMMessage)) {
+		LMSendReply(request->head.msgh_remote_port, NULL, 0);
+		LMResponseBufferFree(bytes);
+		return;
+	}
+	// Send Response
+	const void *data = LMMessageGetData(request);
+	size_t length = LMMessageGetDataLength(request);
+	mach_port_t replyPort = request->head.msgh_remote_port;
+	CFDataRef cfdata = data ? CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, data, length, kCFAllocatorNull) : NULL;
+	processMessage(request->head.msgh_id, replyPort, cfdata);
+	if (cfdata)
+		CFRelease(cfdata);
+	LMResponseBufferFree(bytes);
+}
+
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 - (id)init
 {
 	if ((self = [super init])) {
-		messagePort = CFMessagePortCreateLocal(kCFAllocatorDefault, CFSTR("applist.datasource"), messageServerCallback, NULL, NULL);
-		CFRunLoopSourceRef source = CFMessagePortCreateRunLoopSource(kCFAllocatorDefault, messagePort, 0);
-		CFRunLoopAddSource(CFRunLoopGetCurrent(), source, kCFRunLoopDefaultMode);
+		mach_port_t bootstrap = MACH_PORT_NULL;
+		task_get_bootstrap_port(mach_task_self(), &bootstrap);
+		CFMachPortContext context = { 0, NULL, NULL, NULL, NULL };
+		CFMachPortRef machPort = CFMachPortCreate(kCFAllocatorDefault, machPortCallback, &context, NULL);
+		CFRunLoopSourceRef machPortSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, machPort, 0);
+		CFRunLoopAddSource(CFRunLoopGetCurrent(), machPortSource, kCFRunLoopDefaultMode);
+		mach_port_t port = CFMachPortGetPort(machPort);
+		kern_return_t err = bootstrap_register(bootstrap, connection.serverName, port);
+		if (err) {
+			NSLog(@"AppList: Unable to register mach server with error %x", err);
+		}
 	}
 	return self;
 }
+#pragma GCC diagnostic warning "-Wdeprecated-declarations"
 
 - (NSDictionary *)applications
 {
@@ -351,24 +358,12 @@ finish:
 
 @end
 
-
 CHConstructor
 {
 	CHAutoreleasePoolForScope();
-	void *handle = dlopen("/System/Library/Frameworks/ImageIO.framework/ImageIO", RTLD_LAZY) ?: dlopen("/System/Library/PrivateFrameworks/ImageIO.framework/ImageIO", RTLD_LAZY);
-	if (!handle)
-		return;
 	if (CHLoadLateClass(SBIconModel)) {
 		CHLoadLateClass(SBIconViewMap);
 		CHLoadLateClass(SBApplicationController);
-		_CGImageDestinationCreateWithData = dlsym(handle, "CGImageDestinationCreateWithData");
-		_CGImageDestinationAddImage = dlsym(handle, "CGImageDestinationAddImage");
-		_CGImageDestinationFinalize = dlsym(handle, "CGImageDestinationFinalize");
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
-	} else {
-		_CGImageSourceCreateWithData = dlsym(handle, "CGImageSourceCreateWithData");
-		_CGImageSourceCreateImageAtIndex = dlsym(handle, "CGImageSourceCreateImageAtIndex");
-		messagePort = CFMessagePortCreateRemote(kCFAllocatorDefault, CFSTR("applist.datasource"));
-		sharedApplicationList = [[ALApplicationList alloc] init];
 	}
 }
