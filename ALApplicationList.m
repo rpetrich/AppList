@@ -214,7 +214,7 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 	switch (messageId) {
 		case ALMessageIdGetApplications: {
 			NSDictionary *result;
-			if (data) {
+			if (data && CFDataGetLength(data)) {
 				NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:(NSData *)data];
 				result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate] : [sharedApplicationList applications];
 			} else {
@@ -224,8 +224,6 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			return;
 		}
 		case ALMessageIdIconForSize: {
-			if (!data)
-				break;
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
 			if (![params isKindOfClass:[NSDictionary class]])
 				break;
@@ -245,8 +243,6 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 		}
 		case ALMessageIdValueForKeyPath:
 		case ALMessageIdValueForKey: {
-			if (!data)
-				break;
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
 			if (![params isKindOfClass:[NSDictionary class]])
 				break;
