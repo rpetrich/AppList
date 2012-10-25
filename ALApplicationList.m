@@ -146,6 +146,8 @@ static ALApplicationList *sharedApplicationList;
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
+	if (iconSize <= 0)
+		return NULL;
 	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", (CGFloat)iconSize];
 	OSSpinLockLock(&spinLock);
 	CGImageRef result = (CGImageRef)[cachedIcons objectForKey:key];
@@ -224,6 +226,8 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			return;
 		}
 		case ALMessageIdIconForSize: {
+			if (!data)
+				break;
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
 			if (![params isKindOfClass:[NSDictionary class]])
 				break;
@@ -243,6 +247,8 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 		}
 		case ALMessageIdValueForKeyPath:
 		case ALMessageIdValueForKey: {
+			if (!data)
+				break;
 			NSDictionary *params = [NSPropertyListSerialization propertyListFromData:(NSData *)data mutabilityOption:0 format:NULL errorDescription:NULL];
 			if (![params isKindOfClass:[NSDictionary class]])
 				break;
