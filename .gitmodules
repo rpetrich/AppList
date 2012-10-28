@@ -1,3 +1,6 @@
 [submodule "framework"]
 	path = framework
 	url = git://github.com/rpetrich/theos.git
+[submodule "LightMessaging"]
+	path = LightMessaging
+	url = git://github.com/rpetrich/LightMessaging.git

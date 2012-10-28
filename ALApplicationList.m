@@ -6,7 +6,7 @@
 #import <CaptainHook/CaptainHook.h>
 #import <dlfcn.h>
 
-#import "LightMessaging.h"
+#import "LightMessaging/LightMessaging.h"
 
 CHDeclareClass(SBApplicationController);
 CHDeclareClass(SBIconModel);
