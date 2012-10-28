@@ -283,7 +283,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	const void *data = LMMessageGetData(request);
 	size_t length = LMMessageGetDataLength(request);
 	mach_port_t replyPort = request->head.msgh_remote_port;
-	CFDataRef cfdata = data ? CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, data, length, kCFAllocatorNull) : NULL;
+	CFDataRef cfdata = CFDataCreateWithBytesNoCopy(kCFAllocatorDefault, data ?: &data, length, kCFAllocatorNull);
 	processMessage(request->head.msgh_id, replyPort, cfdata);
 	if (cfdata)
 		CFRelease(cfdata);
