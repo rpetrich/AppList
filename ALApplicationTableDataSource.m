@@ -256,6 +256,11 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 	}
 }
 
+- (void)detach
+{
+	_dataSource = nil;
+}
+
 @end
 
 @implementation ALApplicationTableDataSource
@@ -297,6 +302,9 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)dealloc
 {
+	for (ALApplicationTableDataSourceSection *section in _sectionDescriptors) {
+		[section detach];
+	}
 	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[_localizationBundle release];
 	[_tableView release];
@@ -309,6 +317,9 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)setSectionDescriptors:(NSArray *)sectionDescriptors
 {
+	for (ALApplicationTableDataSourceSection *section in _sectionDescriptors) {
+		[section detach];
+	}
 	[_sectionDescriptors removeAllObjects];
 	for (NSDictionary *descriptor in sectionDescriptors) {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -332,6 +343,19 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)removeSectionDescriptorsAtIndexes:(NSIndexSet *)indexSet
 {
+	if (indexSet) {
+		NSUInteger index = [indexSet firstIndex];
+		if (index != NSNotFound) {
+			NSUInteger lastIndex = [indexSet lastIndex];
+			for (;;) {
+				[[_sectionDescriptors objectAtIndex:index] detach];
+				if (index == lastIndex) {
+					break;
+				}
+				index = [indexSet indexGreaterThanIndex:index];
+			}
+		}
+	}
 	[_sectionDescriptors removeObjectsAtIndexes:indexSet];
 	[_tableView deleteSections:indexSet withRowAnimation:UITableViewRowAnimationFade];
 }
