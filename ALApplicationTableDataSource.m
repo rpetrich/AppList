@@ -23,6 +23,32 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	return [[(NSDictionary *)context objectForKey:a] localizedCaseInsensitiveCompare:[(NSDictionary *)context objectForKey:b]];
 }
 
+@interface ALApplicationLoadingTableViewCell : UITableViewCell
+@end
+
+@implementation ALApplicationLoadingTableViewCell
+
+- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+	if ((self = [super initWithStyle:style reuseIdentifier:reuseIdentifier])) {
+		self.backgroundColor = [UIColor clearColor];
+		UIActivityIndicatorView *spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+		CGSize cellSize = self.bounds.size;
+		CGRect frame = spinner.frame;
+		frame.origin.x = (cellSize.width - frame.size.width) * 0.5f;
+		frame.origin.y = (cellSize.height - frame.size.height) * 0.5f;
+		spinner.frame = frame;
+		spinner.autoresizingMask = UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleBottomMargin;
+		[spinner startAnimating];
+		[self addSubview:spinner];
+		[spinner release];
+		self.backgroundView = [[[UIView alloc] initWithFrame:CGRectZero] autorelease];
+	}
+	return self;
+}
+
+@end
+
 __attribute__((visibility("hidden")))
 @interface ALApplicationTableDataSourceSection : NSObject {
 @private
@@ -32,12 +58,17 @@ __attribute__((visibility("hidden")))
 	NSArray *_displayIdentifiers;
 	CGFloat iconSize;
 	BOOL isStaticSection;
+	BOOL isLoading;
 }
 
 @property (nonatomic, readonly) NSDictionary *descriptor;
 @property (nonatomic, readonly) NSString *title;
 @property (nonatomic, readonly) NSString *footerTitle;
 
+@end
+
+@interface ALApplicationTableDataSource ()
+- (void)sectionRequestedSectionReload:(ALApplicationTableDataSourceSection *)section;
 @end
 
 static NSArray *hiddenDisplayIdentifiers;
@@ -111,25 +142,8 @@ static UIImage *defaultImage;
 			_displayNames = [items copy];
 			isStaticSection = YES;
 		} else {
-			NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
-			ALApplicationList *appList = [ALApplicationList sharedApplicationList];
-			NSDictionary *applications;
-			if (predicateText)
-				applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
-			else
-				applications = [appList applications];
-			NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
-			if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
-				for (NSString *displayIdentifier in hiddenDisplayIdentifiers)
-					[displayIdentifiers removeObject:displayIdentifier];
-			}
-			[displayIdentifiers sortUsingFunction:DictionaryTextComparator context:applications];
-			NSMutableArray *displayNames = [[NSMutableArray alloc] init];
-			for (NSString *displayId in displayIdentifiers)
-				[displayNames addObject:[applications objectForKey:displayId]];
-			_displayIdentifiers = displayIdentifiers;
-			_displayNames = displayNames;
-			iconSize = [[descriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
+			isLoading = YES;
+			[self performSelectorInBackground:@selector(loadContent) withObject:nil];
 		}
 	}
 	return self;
@@ -141,6 +155,40 @@ static UIImage *defaultImage;
 	[_displayNames release];
 	[_descriptor release];
 	[super dealloc];
+}
+
+- (void)loadContent
+{
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	NSDictionary *descriptor = _descriptor;
+	NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
+	ALApplicationList *appList = [ALApplicationList sharedApplicationList];
+	NSDictionary *applications;
+	if (predicateText)
+		applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
+	else
+		applications = [appList applications];
+	NSLog(@"application = %@", applications);
+	NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
+	if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
+		for (NSString *displayIdentifier in hiddenDisplayIdentifiers)
+			[displayIdentifiers removeObject:displayIdentifier];
+	}
+	[displayIdentifiers sortUsingFunction:DictionaryTextComparator context:applications];
+	NSMutableArray *displayNames = [[NSMutableArray alloc] init];
+	for (NSString *displayId in displayIdentifiers)
+		[displayNames addObject:[applications objectForKey:displayId]];
+	_displayIdentifiers = displayIdentifiers;
+	_displayNames = displayNames;
+	iconSize = [[descriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
+	[self performSelectorOnMainThread:@selector(completedLoading) withObject:nil waitUntilDone:NO];
+	[pool drain];
+}
+
+- (void)completedLoading
+{
+	isLoading = NO;
+	[_dataSource sectionRequestedSectionReload:self];
 }
 
 @synthesize descriptor = _descriptor;
@@ -173,7 +221,7 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 
 - (NSInteger)rowCount
 {
-	return [_displayNames count];
+	return isLoading ? 1 : [_displayNames count];
 }
 
 static inline UITableViewCell *CellWithClassName(NSString *className, UITableView *tableView)
@@ -202,6 +250,9 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 		}
 		cell.imageView.image = image;
 		return cell;
+	}
+	if (isLoading) {
+		return [tableView dequeueReusableCellWithIdentifier:@"ALApplicationLoadingTableViewCell"] ?: [[[ALApplicationLoadingTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"ALApplicationLoadingTableViewCell"] autorelease];
 	}
 	UITableViewCell *cell = CellWithClassName([_descriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell");
 	cell.textLabel.text = [_displayNames objectAtIndex:row];
@@ -402,6 +453,14 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 		NSInteger row = indexPath.row;
 		ALApplicationTableDataSourceSection *sectionObject = [_sectionDescriptors objectAtIndex:section];
 		[sectionObject updateCell:[_tableView cellForRowAtIndexPath:indexPath] forRow:row withLoadedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+	}
+}
+
+- (void)sectionRequestedSectionReload:(ALApplicationTableDataSourceSection *)section
+{
+	NSInteger index = [_sectionDescriptors indexOfObjectIdenticalTo:section];
+	if (index != NSNotFound) {
+		[_tableView reloadSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationFade];
 	}
 }
 
