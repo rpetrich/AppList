@@ -314,7 +314,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
 	for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
-		[result setObject:[app displayName] forKey:[app displayIdentifier]];
+		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
 	return result;
 }
 
@@ -330,7 +330,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	if (predicate)
 		apps = [apps filteredArrayUsingPredicate:predicate];
 	for (SBApplication *app in apps)
-		[result setObject:[app displayName] forKey:[app displayIdentifier]];
+		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
 	return result;
 }
 
