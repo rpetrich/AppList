@@ -5,14 +5,8 @@
 
 @interface ALApplicationTableDataSource : NSObject <UITableViewDataSource> {
 @private
-	ALApplicationList *appList;
 	NSMutableArray *_sectionDescriptors;
-	NSMutableArray *_displayIdentifiers;
-	NSMutableArray *_displayNames;
-	NSMutableArray *_iconsToLoad;
-	OSSpinLock spinLock;
 	UITableView *_tableView;
-	UIImage *_defaultImage;
 	NSBundle *_localizationBundle;
 }
 
@@ -25,7 +19,7 @@
 @property (nonatomic, retain) UITableView *tableView;
 @property (nonatomic, retain) NSBundle *localizationBundle;
 
-- (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell
+- (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell; nil if loading
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 
 - (void)insertSectionDescriptor:(NSDictionary *)sectionDescriptor atIndex:(NSInteger)index;
