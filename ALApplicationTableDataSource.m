@@ -80,7 +80,7 @@ static UIImage *defaultImage;
 
 + (void)initialize
 {
-	if (self == [ALApplicationTableDataSource class]) {
+	if (self == [ALApplicationTableDataSourceSection class]) {
 		defaultImage = [[[ALApplicationList sharedApplicationList] iconOfSize:ALApplicationIconSizeSmall forDisplayIdentifier:@"com.apple.WebSheet"] retain];
 		hiddenDisplayIdentifiers = [[NSArray alloc] initWithObjects:
 		                            @"com.apple.AdSheet",
