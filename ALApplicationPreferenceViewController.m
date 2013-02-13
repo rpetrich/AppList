@@ -8,10 +8,12 @@
 #include <notify.h>
 #include <objc/message.h>
 
+@class ALPreferencesTableDataSource;
+
 __attribute__((visibility("hidden")))
-@interface ALApplicationPreferenceViewController : PSViewController<UITableViewDelegate> {
+@interface ALApplicationPreferenceViewController : PSViewController {
 @private
-	ALApplicationTableDataSource *_dataSource;
+	ALPreferencesTableDataSource *_dataSource;
 	UITableView *_tableView;
 	NSString *_navigationTitle;
     NSArray *descriptors;
@@ -35,7 +37,7 @@ __attribute__((visibility("hidden")))
 @end
 
 __attribute__((visibility("hidden")))
-@interface ALPreferencesTableDataSource : ALApplicationTableDataSource<ALValueCellDelegate> {
+@interface ALPreferencesTableDataSource : ALApplicationTableDataSource<ALValueCellDelegate, UITableViewDelegate> {
 @private
 	ALApplicationPreferenceViewController *_controller;
 }
@@ -63,7 +65,7 @@ __attribute__((visibility("hidden")))
 		_tableView = [[UITableView alloc] initWithFrame:frame style:UITableViewStyleGrouped];
 		_dataSource = [[ALPreferencesTableDataSource alloc] initWithController:self];
 		[_tableView setDataSource:_dataSource];
-		[_tableView setDelegate:self];
+		[_tableView setDelegate:_dataSource];
 		[_tableView setAutoresizingMask:UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight];
 		_dataSource.tableView = _tableView;
 	}
@@ -198,20 +200,6 @@ __attribute__((visibility("hidden")))
 	return [_tableView frame].size;
 }
 
-- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
-{
-	id cell = [_tableView cellForRowAtIndexPath:indexPath];
-	if ([cell respondsToSelector:@selector(didSelect)])
-		[cell didSelect];
-	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
-	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
-		SEL action = NSSelectorFromString([[cellDescriptor objectForKey:@"action"] stringByAppendingString:@"FromCellDescriptor:"]);
-		if ([self respondsToSelector:action])
-			objc_msgSend(self, action, cellDescriptor);
-	}
-	[_tableView deselectRowAtIndexPath:indexPath animated:YES];
-}
-
 - (void)cellAtIndexPath:(NSIndexPath *)indexPath didChangeToValue:(id)newValue
 {
 	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
@@ -295,6 +283,20 @@ __attribute__((visibility("hidden")))
 - (void)valueCell:(ALValueCell *)valueCell didChangeToValue:(id)newValue
 {
 	[_controller cellAtIndexPath:[self.tableView indexPathForCell:valueCell] didChangeToValue:newValue];
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+	id cell = [tableView cellForRowAtIndexPath:indexPath];
+	if ([cell respondsToSelector:@selector(didSelect)])
+		[cell didSelect];
+	id cellDescriptor = [self cellDescriptorForIndexPath:indexPath];
+	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
+		SEL action = NSSelectorFromString([[cellDescriptor objectForKey:@"action"] stringByAppendingString:@"FromCellDescriptor:"]);
+		if ([_controller respondsToSelector:action])
+			objc_msgSend(_controller, action, cellDescriptor);
+	}
+	[tableView deselectRowAtIndexPath:indexPath animated:YES];
 }
 
 @end
