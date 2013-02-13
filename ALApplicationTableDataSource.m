@@ -168,7 +168,6 @@ static UIImage *defaultImage;
 		applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
 	else
 		applications = [appList applications];
-	NSLog(@"application = %@", applications);
 	NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
 	if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
 		for (NSString *displayIdentifier in hiddenDisplayIdentifiers)
