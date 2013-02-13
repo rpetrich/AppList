@@ -59,6 +59,7 @@ __attribute__((visibility("hidden")))
 	CGFloat iconSize;
 	BOOL isStaticSection;
 	BOOL isLoading;
+	CFTimeInterval loadStartTime;
 }
 
 @property (nonatomic, readonly) NSDictionary *descriptor;
@@ -68,7 +69,7 @@ __attribute__((visibility("hidden")))
 @end
 
 @interface ALApplicationTableDataSource ()
-- (void)sectionRequestedSectionReload:(ALApplicationTableDataSourceSection *)section;
+- (void)sectionRequestedSectionReload:(ALApplicationTableDataSourceSection *)section animated:(BOOL)animated;
 @end
 
 static NSArray *hiddenDisplayIdentifiers;
@@ -143,6 +144,7 @@ static UIImage *defaultImage;
 			isStaticSection = YES;
 		} else {
 			isLoading = YES;
+			loadStartTime = CACurrentMediaTime();
 			[self performSelectorInBackground:@selector(loadContent) withObject:nil];
 		}
 	}
@@ -187,7 +189,7 @@ static UIImage *defaultImage;
 - (void)completedLoading
 {
 	isLoading = NO;
-	[_dataSource sectionRequestedSectionReload:self];
+	[_dataSource sectionRequestedSectionReload:self animated:CACurrentMediaTime() - loadStartTime > 0.1];
 }
 
 @synthesize descriptor = _descriptor;
@@ -455,11 +457,15 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 	}
 }
 
-- (void)sectionRequestedSectionReload:(ALApplicationTableDataSourceSection *)section
+- (void)sectionRequestedSectionReload:(ALApplicationTableDataSourceSection *)section animated:(BOOL)animated
 {
-	NSInteger index = [_sectionDescriptors indexOfObjectIdenticalTo:section];
-	if (index != NSNotFound) {
-		[_tableView reloadSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationFade];
+	if (animated) {
+		NSInteger index = [_sectionDescriptors indexOfObjectIdenticalTo:section];
+		if (index != NSNotFound) {
+			[_tableView reloadSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationFade];
+		}
+	} else {
+		[_tableView reloadData];
 	}
 }
 
