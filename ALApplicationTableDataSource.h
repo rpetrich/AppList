@@ -8,6 +8,7 @@
 	NSMutableArray *_sectionDescriptors;
 	UITableView *_tableView;
 	NSBundle *_localizationBundle;
+	BOOL _loadsAsynchronously;
 }
 
 + (NSArray *)standardSectionDescriptors;
@@ -18,6 +19,7 @@
 @property (nonatomic, copy) NSArray *sectionDescriptors;
 @property (nonatomic, retain) UITableView *tableView;
 @property (nonatomic, retain) NSBundle *localizationBundle;
+@property (nonatomic, assign) BOOL loadsAsynchronously;
 
 - (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell; nil if loading
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;

@@ -66,6 +66,8 @@ __attribute__((visibility("hidden")))
 @property (nonatomic, readonly) NSString *title;
 @property (nonatomic, readonly) NSString *footerTitle;
 
+- (void)loadContent;
+
 @end
 
 @interface ALApplicationTableDataSource ()
@@ -133,7 +135,7 @@ static UIImage *defaultImage;
 	[pool drain];
 }
 
-- (id)initWithDescriptor:(NSDictionary *)descriptor dataSource:(ALApplicationTableDataSource *)dataSource
+- (id)initWithDescriptor:(NSDictionary *)descriptor dataSource:(ALApplicationTableDataSource *)dataSource loadsAsynchronously:(BOOL)loadsAsynchronously
 {
 	if ((self = [super init])) {
 		_dataSource = dataSource;
@@ -143,9 +145,13 @@ static UIImage *defaultImage;
 			_displayNames = [items copy];
 			isStaticSection = YES;
 		} else {
-			isLoading = YES;
-			loadStartTime = CACurrentMediaTime();
-			[self performSelectorInBackground:@selector(loadContent) withObject:nil];
+			if (loadsAsynchronously) {
+				isLoading = YES;
+				loadStartTime = CACurrentMediaTime();
+				[self performSelectorInBackground:@selector(loadContent) withObject:nil];
+			} else {
+				[self loadContent];
+			}
 		}
 	}
 	return self;
@@ -182,7 +188,9 @@ static UIImage *defaultImage;
 	_displayIdentifiers = displayIdentifiers;
 	_displayNames = displayNames;
 	iconSize = [[descriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
-	[self performSelectorOnMainThread:@selector(completedLoading) withObject:nil waitUntilDone:NO];
+	if (![NSThread isMainThread]) {
+		[self performSelectorOnMainThread:@selector(completedLoading) withObject:nil waitUntilDone:NO];
+	}
 	[pool drain];
 }
 
@@ -346,6 +354,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 - (id)init
 {
 	if ((self = [super init])) {
+		_loadsAsynchronously = YES;
 		_sectionDescriptors = [[NSMutableArray alloc] init];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(iconLoadedFromNotification:) name:ALIconLoadedNotification object:nil];
 	}
@@ -366,6 +375,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 @synthesize tableView = _tableView;
 @synthesize localizationBundle = _localizationBundle;
+@synthesize loadsAsynchronously = _loadsAsynchronously;
 
 - (void)setSectionDescriptors:(NSArray *)sectionDescriptors
 {
@@ -375,7 +385,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 	[_sectionDescriptors removeAllObjects];
 	for (NSDictionary *descriptor in sectionDescriptors) {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-		ALApplicationTableDataSourceSection *section = [[ALApplicationTableDataSourceSection alloc] initWithDescriptor:descriptor dataSource:self];
+		ALApplicationTableDataSourceSection *section = [[ALApplicationTableDataSourceSection alloc] initWithDescriptor:descriptor dataSource:self loadsAsynchronously:_loadsAsynchronously];
 		[_sectionDescriptors addObject:section];
 		[section release];
 		[pool release];
@@ -419,7 +429,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)insertSectionDescriptor:(NSDictionary *)sectionDescriptor atIndex:(NSInteger)index
 {
-	ALApplicationTableDataSourceSection *section = [[ALApplicationTableDataSourceSection alloc] initWithDescriptor:sectionDescriptor dataSource:self];
+	ALApplicationTableDataSourceSection *section = [[ALApplicationTableDataSourceSection alloc] initWithDescriptor:sectionDescriptor dataSource:self loadsAsynchronously:_loadsAsynchronously];
 	[_sectionDescriptors insertObject:section atIndex:index];
 	[section release];
 	[_tableView insertSections:[NSIndexSet indexSetWithIndex:index] withRowAnimation:UITableViewRowAnimationFade];
