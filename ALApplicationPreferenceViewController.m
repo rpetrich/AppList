@@ -7,6 +7,7 @@
 
 #import <Preferences/Preferences.h>
 #import <CaptainHook/CaptainHook.h>
+#import <CoreFoundation/CoreFoundation.h>
 #include <notify.h>
 #include <objc/message.h>
 
@@ -81,6 +82,9 @@ __attribute__((visibility("hidden")))
 
 - (void)dealloc
 {
+	if (settingsChangeNotification) {
+		CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), self, (CFStringRef)settingsChangeNotification, NULL);
+	}
 	[_tableView setDelegate:nil];
 	[_tableView setDataSource:nil];
 	[_tableView release];
@@ -130,6 +134,18 @@ __attribute__((visibility("hidden")))
     }
 }
 
+- (void)settingsChanged
+{
+	[settings release];
+	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
+	[_tableView reloadData];
+}
+
+static void SettingsChangedNotificationFired(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{
+	[(ALApplicationPreferenceViewController *)observer settingsChanged];
+}
+
 - (void)loadFromSpecifier:(PSSpecifier *)specifier
 {
 	[self setNavigationTitle:[specifier propertyForKey:@"ALNavigationTitle"] ?: [specifier name]];
@@ -174,8 +190,15 @@ __attribute__((visibility("hidden")))
 
 	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
 
-	[settingsChangeNotification release];
-	settingsChangeNotification = [[specifier propertyForKey:@"ALChangeNotification"] retain];
+	if (settingsChangeNotification) {
+		CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), self, (CFStringRef)settingsChangeNotification, NULL);
+		[settingsChangeNotification release];
+	}
+	settingsChangeNotification = [specifier propertyForKey:@"ALChangeNotification"];
+	if (settingsChangeNotification) {
+		[settingsChangeNotification retain];
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), self, SettingsChangedNotificationFired, (CFStringRef)settingsChangeNotification, NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+	}
 
 	id temp = [specifier propertyForKey:@"ALAllowsSelection"];
 	[_tableView setAllowsSelection:temp ? [temp boolValue] : singleEnabledMode];
