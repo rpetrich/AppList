@@ -11,6 +11,10 @@
 #include <notify.h>
 #include <objc/message.h>
 
+@interface PSSpecifier (iOS5)
+@property (retain, nonatomic) NSString *identifier;
+@end
+
 @interface PSListController (iOS4)
 - (PSViewController *)controllerForSpecifier:(PSSpecifier *)specifier;
 @end
@@ -386,8 +390,14 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 	return nil;
 }
 
-- (PSSpecifier *)specifierForCellDescriptor:(id)cellDescriptor sectionDescriptor:(NSDictionary *)sectionDescriptor
+- (PSSpecifier *)specifierForIndexPath:(NSIndexPath *)indexPath
 {
+	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
+	if (!cellDescriptor) {
+		NSLog(@"AppList: no cell descriptor for cell!");
+		return nil;
+	}
+	NSDictionary *sectionDescriptor = [_dataSource.sectionDescriptors objectAtIndex:indexPath.section];
 	NSDictionary *entry = [self appliedValueForKey:@"entry" inCellDescriptor:cellDescriptor sectionDescriptor:sectionDescriptor];
 	if (!entry) {
 		NSLog(@"AppList: entry key missing!");
@@ -404,13 +414,16 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 		NSLog(@"AppList: preferenceloader failed to load specifier!");
 		return nil;
 	}
-	return [specifiers objectAtIndex:0];
+	PSSpecifier *specifier = [specifiers objectAtIndex:0];
+	if ([specifier respondsToSelector:@selector(setIdentifier:)]) {
+		[specifier setIdentifier:[NSString stringWithFormat:@"applist:%d,%d", indexPath.section, indexPath.row]];
+	}
+	return specifier;
 }
 
-- (void)showPreferencesFromCellDescriptor:(id)cellDescriptor sectionDescriptor:(NSDictionary *)sectionDescriptor
+- (void)showPreferencesFromCellDescriptor:(id)cellDescriptor sectionDescriptor:(NSDictionary *)sectionDescriptor indexPath:(NSIndexPath *)indexPath
 {
-	PSSpecifier *specifier = [self specifierForCellDescriptor:cellDescriptor sectionDescriptor:sectionDescriptor];
-	NSLog(@"-[%@ showPreferencesFromCellDescriptor:%@ sectionDescriptor:%@] %@", self, cellDescriptor, sectionDescriptor, specifier);
+	PSSpecifier *specifier = [self specifierForIndexPath:indexPath];
 	if (specifier) {
 		[self pushController:[self controllerForSpecifier:specifier]];
 	}
@@ -426,6 +439,21 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 {
 	return nil;
 }*/
+
+- (PSSpecifier *)specifierForID:(NSString *)identifier
+{
+	if ([identifier hasPrefix:@"applist:"]) {
+		NSArray *components = [[identifier substringFromIndex:8] componentsSeparatedByString:@","];
+		if ([components count] == 2) {
+			NSIndexPath *indexPath = [NSIndexPath indexPathForRow:[[components objectAtIndex:1] integerValue] inSection:[[components objectAtIndex:0] integerValue]];
+			PSSpecifier *result = [self specifierForIndexPath:indexPath];
+			if (result) {
+				return result;
+			}
+		}
+	}
+	return [super specifierForID:identifier];
+}
 
 @end
 
@@ -463,13 +491,18 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 	if (cellDescriptor) {
 		NSDictionary *sectionDescriptor = [self.sectionDescriptors objectAtIndex:indexPath.section];
 		NSString *stringAction = [_controller appliedValueForKey:@"action" inCellDescriptor:cellDescriptor sectionDescriptor:sectionDescriptor];
-		SEL action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:sectionDescriptor:"]);
-		if ([_controller respondsToSelector:action])
-			objc_msgSend(_controller, action, cellDescriptor, sectionDescriptor);
-		else {
-			action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:"]);
+		SEL action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:sectionDescriptor:indexPath:"]);
+		if ([_controller respondsToSelector:action]) {
+			objc_msgSend(_controller, action, cellDescriptor, sectionDescriptor, indexPath);
+		} else {
+			action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:sectionDescriptor:"]);
 			if ([_controller respondsToSelector:action]) {
-				objc_msgSend(_controller, action, cellDescriptor);
+				objc_msgSend(_controller, action, cellDescriptor, sectionDescriptor);
+			} else {
+				action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:"]);
+				if ([_controller respondsToSelector:action]) {
+					objc_msgSend(_controller, action, cellDescriptor);
+				}
 			}
 		}
 	}
