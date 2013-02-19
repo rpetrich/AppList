@@ -392,12 +392,14 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 
 - (PSSpecifier *)specifierForIndexPath:(NSIndexPath *)indexPath
 {
+	NSInteger section = indexPath.section;
+	[_dataSource waitUntilDate:nil forContentInSectionAtIndex:section];
 	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
 	if (!cellDescriptor) {
 		NSLog(@"AppList: no cell descriptor for cell!");
 		return nil;
 	}
-	NSDictionary *sectionDescriptor = [_dataSource.sectionDescriptors objectAtIndex:indexPath.section];
+	NSDictionary *sectionDescriptor = [_dataSource.sectionDescriptors objectAtIndex:section];
 	NSDictionary *entry = [self appliedValueForKey:@"entry" inCellDescriptor:cellDescriptor sectionDescriptor:sectionDescriptor];
 	if (!entry) {
 		NSLog(@"AppList: entry key missing!");
@@ -416,7 +418,7 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 	}
 	PSSpecifier *specifier = [specifiers objectAtIndex:0];
 	if ([specifier respondsToSelector:@selector(setIdentifier:)]) {
-		[specifier setIdentifier:[NSString stringWithFormat:@"applist:%d,%d", indexPath.section, indexPath.row]];
+		[specifier setIdentifier:[NSString stringWithFormat:@"applist:%d,%d", section, indexPath.row]];
 	}
 	return specifier;
 }

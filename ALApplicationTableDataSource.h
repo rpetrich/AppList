@@ -28,6 +28,8 @@
 - (void)removeSectionDescriptorAtIndex:(NSInteger)index;
 - (void)removeSectionDescriptorsAtIndexes:(NSIndexSet *)indexSet;
 
+- (BOOL)waitUntilDate:(NSDate *)date forContentInSectionAtIndex:(NSInteger)sectionIndex;
+
 @end
 
 extern const NSString *ALSectionDescriptorTitleKey;

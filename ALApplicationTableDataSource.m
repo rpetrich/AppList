@@ -60,6 +60,7 @@ __attribute__((visibility("hidden")))
 	BOOL isStaticSection;
 	BOOL isLoading;
 	CFTimeInterval loadStartTime;
+	NSCondition *loadCondition;
 }
 
 @property (nonatomic, readonly) NSDictionary *descriptor;
@@ -149,6 +150,7 @@ static UIImage *defaultImage;
 				isLoading = YES;
 				loadStartTime = CACurrentMediaTime();
 				[self performSelectorInBackground:@selector(loadContent) withObject:nil];
+				loadCondition = [[NSCondition alloc] init];
 			} else {
 				[self loadContent];
 			}
@@ -159,6 +161,7 @@ static UIImage *defaultImage;
 
 - (void)dealloc
 {
+	[loadCondition release];
 	[_displayIdentifiers release];
 	[_displayNames release];
 	[_descriptor release];
@@ -185,19 +188,44 @@ static UIImage *defaultImage;
 	NSMutableArray *displayNames = [[NSMutableArray alloc] init];
 	for (NSString *displayId in displayIdentifiers)
 		[displayNames addObject:[applications objectForKey:displayId]];
+	[loadCondition lock];
 	_displayIdentifiers = displayIdentifiers;
 	_displayNames = displayNames;
 	iconSize = [[descriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
 	if (![NSThread isMainThread]) {
 		[self performSelectorOnMainThread:@selector(completedLoading) withObject:nil waitUntilDone:NO];
 	}
+	[loadCondition signal];
+	[loadCondition unlock];
 	[pool drain];
 }
 
 - (void)completedLoading
 {
-	isLoading = NO;
-	[_dataSource sectionRequestedSectionReload:self animated:CACurrentMediaTime() - loadStartTime > 0.1];
+	if (isLoading) {
+		isLoading = NO;
+		[_dataSource sectionRequestedSectionReload:self animated:CACurrentMediaTime() - loadStartTime > 0.1];
+	}
+}
+
+- (BOOL)waitForContentUntilDate:(NSDate *)date
+{
+	if (isLoading) {
+		[loadCondition lock];
+		BOOL result;
+		if (date)
+			result = [loadCondition waitUntilDate:date];
+		else {
+			[loadCondition wait];
+			result = YES;
+		}
+		[loadCondition unlock];
+		if (isLoading) {
+			[self completedLoading];
+		}
+		return result;
+	}
+	return YES;
 }
 
 @synthesize descriptor = _descriptor;
@@ -477,6 +505,12 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 	} else {
 		[_tableView reloadData];
 	}
+}
+
+- (BOOL)waitUntilDate:(NSDate *)date forContentInSectionAtIndex:(NSInteger)sectionIndex
+{
+	ALApplicationTableDataSourceSection *section = [_sectionDescriptors objectAtIndex:sectionIndex];
+	return [section waitForContentUntilDate:date];
 }
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
