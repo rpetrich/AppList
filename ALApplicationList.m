@@ -92,7 +92,8 @@ static ALApplicationList *sharedApplicationList;
 - (NSInteger)applicationCount
 {
 	LMResponseBuffer buffer;
-	LMConnectionSendTwoWay(&connection, ALMessageIdGetApplicationCount, NULL, 0, &buffer);
+	if (LMConnectionSendTwoWay(&connection, ALMessageIdGetApplicationCount, NULL, 0, &buffer))
+		return 0;
 	return LMResponseConsumeInteger(&buffer);
 }
 
@@ -116,7 +117,8 @@ static ALApplicationList *sharedApplicationList;
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
 	LMResponseBuffer buffer;
-	LMConnectionSendTwoWayData(&connection, ALMessageIdGetApplications, (CFDataRef)[NSKeyedArchiver archivedDataWithRootObject:predicate], &buffer);
+	if (LMConnectionSendTwoWayData(&connection, ALMessageIdGetApplications, (CFDataRef)[NSKeyedArchiver archivedDataWithRootObject:predicate], &buffer))
+		return nil;
 	id result = LMResponseConsumePropertyList(&buffer);
 	return [result isKindOfClass:[NSDictionary class]] ? result : nil;
 }
@@ -126,7 +128,8 @@ static ALApplicationList *sharedApplicationList;
 	if (!keyPath || !displayIdentifier)
 		return nil;
 	LMResponseBuffer buffer;
-	LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdValueForKeyPath, [NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil], &buffer);
+	if (LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdValueForKeyPath, [NSDictionary dictionaryWithObjectsAndKeys:keyPath, @"key", displayIdentifier, @"displayIdentifier", nil], &buffer))
+		return nil;
 	return LMResponseConsumePropertyList(&buffer);
 }
 
@@ -135,7 +138,8 @@ static ALApplicationList *sharedApplicationList;
 	if (!key || !displayIdentifier)
 		return nil;
 	LMResponseBuffer buffer;
-	LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdValueForKey, [NSDictionary dictionaryWithObjectsAndKeys:key, @"key", displayIdentifier, @"displayIdentifier", nil], &buffer);
+	if (LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdValueForKey, [NSDictionary dictionaryWithObjectsAndKeys:key, @"key", displayIdentifier, @"displayIdentifier", nil], &buffer))
+		return nil;
 	return LMResponseConsumePropertyList(&buffer);
 }
 
@@ -158,7 +162,8 @@ static ALApplicationList *sharedApplicationList;
 	}
 	OSSpinLockUnlock(&spinLock);
 	LMResponseBuffer buffer;
-	LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdIconForSize, [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil], &buffer);
+	if (LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdIconForSize, [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil], &buffer))
+		return NULL;
 	result = [LMResponseConsumeImage(&buffer) CGImage];
 	if (!result)
 		return NULL;
