@@ -20,7 +20,10 @@ AppList_LDFLAGS = -L$(FW_OBJ_DIR)
 AppList_LIBRARIES = applist
 AppList_INSTALL_PATH = /System/Library/PreferenceBundles
 
-TARGET_IPHONEOS_DEPLOYMENT_VERSION = 3.0
+SDKVERSION := 5.1
+INCLUDE_SDKVERSION := 6.1
+TARGET_IPHONEOS_DEPLOYMENT_VERSION := 3.0
+
 ARCHS = armv6
 
 include framework/makefiles/common.mk
