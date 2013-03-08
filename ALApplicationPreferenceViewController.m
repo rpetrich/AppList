@@ -259,7 +259,9 @@ static void SettingsChangedNotificationFired(CFNotificationCenterRef center, voi
 			for (NSIndexPath *otherIndexPath in [_tableView indexPathsForVisibleRows]) {
 				if (![otherIndexPath isEqual:indexPath]) {
 					ALValueCell *otherCell = (ALValueCell *)[_tableView cellForRowAtIndexPath:otherIndexPath];
-					[otherCell loadValue:(id)kCFBooleanFalse withTitle:[self valueTitleForCellAtIndexPath:otherIndexPath]];
+					if ([otherCell respondsToSelector:@selector(loadValue:withTitle:)]) {
+						[otherCell loadValue:(id)kCFBooleanFalse withTitle:[self valueTitleForCellAtIndexPath:otherIndexPath]];
+					}
 				}
 			}
 		} else if ([[settings objectForKey:settingsKeyPrefix] isEqual:cellDescriptor]) {
