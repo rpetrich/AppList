@@ -223,7 +223,13 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			NSDictionary *result;
 			if (data && CFDataGetLength(data)) {
 				NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:(NSData *)data];
-				result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate] : [sharedApplicationList applications];
+				@try {
+					result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate] : [sharedApplicationList applications];
+				}
+				@catch (NSException *exception) {
+					NSLog(@"AppList: In call to applicationsFilteredUsingPredicate:%@ trapped %@", predicate, exception);
+					break;
+				}
 			} else {
 				result = [sharedApplicationList applications];
 			}
@@ -264,7 +270,14 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			NSString *displayIdentifier = [params objectForKey:@"displayIdentifier"];
 			if (![displayIdentifier isKindOfClass:stringClass])
 				break;
-			id result = messageId == ALMessageIdValueForKeyPath ? [sharedApplicationList valueForKeyPath:key forDisplayIdentifier:displayIdentifier] : [sharedApplicationList valueForKey:key forDisplayIdentifier:displayIdentifier];
+			id result;
+			@try {
+				result = messageId == ALMessageIdValueForKeyPath ? [sharedApplicationList valueForKeyPath:key forDisplayIdentifier:displayIdentifier] : [sharedApplicationList valueForKey:key forDisplayIdentifier:displayIdentifier];
+			}
+			@catch (NSException *exception) {
+				NSLog(@"AppList: In call to valueForKey%s:%@ forDisplayIdentifier:%@ trapped %@", messageId == ALMessageIdValueForKeyPath ? "Path" : "", key, displayIdentifier, exception);
+				break;
+			}
 			LMSendPropertyListReply(replyPort, result);
 			return;
 		}
