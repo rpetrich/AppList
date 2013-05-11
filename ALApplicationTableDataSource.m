@@ -58,7 +58,7 @@ __attribute__((visibility("hidden")))
 	NSArray *_displayIdentifiers;
 	CGFloat iconSize;
 	BOOL isStaticSection;
-	BOOL isLoading;
+	NSInteger loadingState;
 	CFTimeInterval loadStartTime;
 	NSCondition *loadCondition;
 }
@@ -147,7 +147,7 @@ static UIImage *defaultImage;
 			isStaticSection = YES;
 		} else {
 			if (loadsAsynchronously) {
-				isLoading = YES;
+				loadingState = 1;
 				loadStartTime = CACurrentMediaTime();
 				[self performSelectorInBackground:@selector(loadContent) withObject:nil];
 				loadCondition = [[NSCondition alloc] init];
@@ -192,6 +192,7 @@ static UIImage *defaultImage;
 	_displayIdentifiers = displayIdentifiers;
 	_displayNames = displayNames;
 	iconSize = [[descriptor objectForKey:ALSectionDescriptorIconSizeKey] floatValue];
+	loadingState = 2;
 	if (![NSThread isMainThread]) {
 		[self performSelectorOnMainThread:@selector(completedLoading) withObject:nil waitUntilDone:NO];
 	}
@@ -202,25 +203,29 @@ static UIImage *defaultImage;
 
 - (void)completedLoading
 {
-	if (isLoading) {
-		isLoading = NO;
+	if (loadingState) {
+		loadingState = 0;
 		[_dataSource sectionRequestedSectionReload:self animated:CACurrentMediaTime() - loadStartTime > 0.1];
 	}
 }
 
 - (BOOL)waitForContentUntilDate:(NSDate *)date
 {
-	if (isLoading) {
+	if (loadingState) {
 		[loadCondition lock];
 		BOOL result;
-		if (date)
-			result = [loadCondition waitUntilDate:date];
-		else {
-			[loadCondition wait];
+		if (loadingState == 1) {
+			if (date)
+				result = [loadCondition waitUntilDate:date];
+			else {
+				[loadCondition wait];
+				result = YES;
+			}
+		} else {
 			result = YES;
 		}
 		[loadCondition unlock];
-		if (isLoading) {
+		if (loadingState == 2) {
 			[self completedLoading];
 		}
 		return result;
@@ -258,7 +263,7 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 
 - (NSInteger)rowCount
 {
-	return isLoading ? 1 : [_displayNames count];
+	return loadingState ? 1 : [_displayNames count];
 }
 
 static inline UITableViewCell *CellWithClassName(NSString *className, UITableView *tableView)
@@ -288,7 +293,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 		cell.imageView.image = image;
 		return cell;
 	}
-	if (isLoading) {
+	if (loadingState) {
 		return [tableView dequeueReusableCellWithIdentifier:@"ALApplicationLoadingTableViewCell"] ?: [[[ALApplicationLoadingTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"ALApplicationLoadingTableViewCell"] autorelease];
 	}
 	UITableViewCell *cell = CellWithClassName([_descriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell");
