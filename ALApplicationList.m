@@ -21,6 +21,11 @@ CHDeclareClass(SBIconViewMap);
 - (SBIconModel *)iconModel;
 @end
 
+@interface UIImage (Private)
++ (UIImage *)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale;
++ (UIImage *)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier roleIdentifier:(NSString *)roleIdentifier format:(int)format scale:(CGFloat)scale;
+@end
+
 
 NSString *const ALIconLoadedNotification = @"ALIconLoadedNotification";
 NSString *const ALDisplayIdentifierKey = @"ALDisplayIdentifier";
@@ -53,6 +58,13 @@ __attribute__((visibility("hidden")))
 
 static ALApplicationList *sharedApplicationList;
 
+typedef enum {
+	LADirectAPINone,
+	LADirectAPIApplicationIconImageForBundleIdentifier,
+	LADirectAPIApplicationIconImageForBundleIdentifierRoleIdentifier,
+} LADirectAPI;
+static LADirectAPI supportedDirectAPI;
+
 @implementation ALApplicationList
 
 + (void)initialize
@@ -78,6 +90,10 @@ static ALApplicationList *sharedApplicationList;
 		cachedIcons = [[NSMutableDictionary alloc] init];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveMemoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
 		[pool drain];
+		if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:format:scale:)])
+			supportedDirectAPI = LADirectAPIApplicationIconImageForBundleIdentifier;
+		else if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:roleIdentifier:format:scale:)])
+			supportedDirectAPI = LADirectAPIApplicationIconImageForBundleIdentifierRoleIdentifier;
 	}
 	return self;
 }
@@ -161,12 +177,29 @@ static ALApplicationList *sharedApplicationList;
 		return result;
 	}
 	OSSpinLockUnlock(&spinLock);
+	if (iconSize == ALApplicationIconSizeSmall) {
+		switch (supportedDirectAPI) {
+			case LADirectAPINone:
+				break;
+			case LADirectAPIApplicationIconImageForBundleIdentifier:
+				result = [UIImage _applicationIconImageForBundleIdentifier:displayIdentifier format:0 scale:[UIScreen mainScreen].scale].CGImage;
+				if (result)
+					goto skip;
+				break;
+			case LADirectAPIApplicationIconImageForBundleIdentifierRoleIdentifier:
+				result = [UIImage _applicationIconImageForBundleIdentifier:displayIdentifier roleIdentifier:nil format:0 scale:[UIScreen mainScreen].scale].CGImage;
+				if (result)
+					goto skip;
+				break;
+		}
+	}
 	LMResponseBuffer buffer;
 	if (LMConnectionSendTwoWayPropertyList(&connection, ALMessageIdIconForSize, [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithUnsignedInteger:iconSize], @"iconSize", displayIdentifier, @"displayIdentifier", nil], &buffer))
 		return NULL;
 	result = [LMResponseConsumeImage(&buffer) CGImage];
 	if (!result)
 		return NULL;
+skip:
 	OSSpinLockLock(&spinLock);
 	[cachedIcons setObject:(id)result forKey:key];
 	OSSpinLockUnlock(&spinLock);
