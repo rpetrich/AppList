@@ -6,6 +6,7 @@
 #import <CaptainHook/CaptainHook.h>
 #import <dlfcn.h>
 
+#define ROCKETBOOTSTRAP_LOAD_DYNAMIC
 #import "LightMessaging/LightMessaging.h"
 
 CHDeclareClass(SBApplicationController);
@@ -343,6 +344,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 		CFRunLoopAddSource(CFRunLoopGetCurrent(), machPortSource, kCFRunLoopDefaultMode);
 		mach_port_t port = CFMachPortGetPort(machPort);
 		kern_return_t err = bootstrap_register(bootstrap, connection.serverName, port);
+		rocketbootstrap_unlock(connection.serverName);
 		if (err) {
 			NSLog(@"AppList: Unable to register mach server with error %x", err);
 		}
