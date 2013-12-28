@@ -236,12 +236,44 @@ static void SettingsChangedNotificationFired(CFNotificationCenterRef center, voi
 		if ([result respondsToSelector:@selector(setScrollsToTop:)]) {
 			[(UIScrollView *)result setScrollsToTop:NO];
 		}
+		if ([result respondsToSelector:@selector(setScrollEnabled:)]) {
+			[(UIScrollView *)result setScrollEnabled:NO];
+		}
+#ifdef __IPHONE_7_0
+		UIViewController *vc = (UIViewController *)self;
+		if ([self respondsToSelector:@selector(setAutomaticallyAdjustsScrollViewInsets:)]) {
+			[vc setAutomaticallyAdjustsScrollViewInsets:NO];
+		}
+#endif
 		_tableView.frame = result.bounds;
 		[_tableView setScrollsToTop:YES];
 		[result addSubview:_tableView];
 	}
 	return result;
 }
+
+#ifdef __IPHONE_7_0
+static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
+{
+	UIEdgeInsets result;
+	if ([vc respondsToSelector:@selector(topLayoutGuide)]) {
+		result.top = vc.topLayoutGuide.length;
+		result.bottom = vc.bottomLayoutGuide.length;
+	} else {
+		result.top = 0.0f;
+		result.bottom = 0.0f;
+	}
+	result.left = 0.0f;
+	result.right = 0.0f;
+	return result;
+}
+- (void)viewDidLayoutSubviews
+{
+	UIEdgeInsets insets = EdgeInsetsForViewController((UIViewController *)self);
+	_tableView.contentInset = insets;
+	_tableView.scrollIndicatorInsets = insets;
+}
+#endif
 
 - (CGSize)contentSize
 {
