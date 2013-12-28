@@ -420,7 +420,7 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 	}
 	PSSpecifier *specifier = [specifiers objectAtIndex:0];
 	if ([specifier respondsToSelector:@selector(setIdentifier:)]) {
-		[specifier setIdentifier:[NSString stringWithFormat:@"applist:%d,%d", section, indexPath.row]];
+		[specifier setIdentifier:[NSString stringWithFormat:@"applist:%ld,%ld", (long)section, (long)indexPath.row]];
 	}
 	return specifier;
 }

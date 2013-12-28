@@ -48,10 +48,6 @@ static LMConnection connection = {
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
 @end
 
-@interface UIImage (iOS40)
-+ (UIImage *)imageWithCGImage:(CGImageRef)imageRef scale:(CGFloat)scale orientation:(int)orientation;
-@end
-
 __attribute__((visibility("hidden")))
 @interface ALApplicationListImpl : ALApplicationList
 @end
@@ -115,7 +111,7 @@ static LADirectAPI supportedDirectAPI;
 
 - (NSString *)description
 {
-	return [NSString stringWithFormat:@"<ALApplicationList: %p applicationCount=%d>", self, self.applicationCount];
+	return [NSString stringWithFormat:@"<ALApplicationList: %p applicationCount=%ld>", self, (long)self.applicationCount];
 }
 
 - (void)didReceiveMemoryWarning
@@ -238,12 +234,6 @@ skip:
 	OSSpinLockUnlock(&spinLock);
 	return result != nil;
 }
-
-@end
-
-@interface SBIcon ()
-
-- (UIImage *)getIconImage:(NSInteger)sizeIndex;
 
 @end
 
