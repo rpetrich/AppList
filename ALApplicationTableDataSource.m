@@ -111,6 +111,16 @@ static UIImage *defaultImage;
                                     @"com.apple.social.remoteui.SocialUIService",
                                     @"com.apple.WebViewService",
                                     @"com.apple.gamecenter.GameCenterUIService",
+									@"com.apple.appleaccount.AACredentialRecoveryDialog",
+									@"com.apple.CompassCalibrationViewService",
+									@"com.apple.WebContentFilter.remoteUI.WebContentAnalysisUI",
+									@"com.apple.PassbookUIService",
+									@"com.apple.uikit.PrintStatus",
+									@"com.apple.Copilot",
+									@"com.apple.MusicUIService",
+									@"com.apple.AccountAuthenticationDialog",
+									@"com.apple.MobileReplayer",
+									@"com.apple.SiriViewService",
 		                            nil];
 	}
 }
