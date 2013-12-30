@@ -10,7 +10,7 @@ libapplist_OBJC_FILES = ALApplicationList.m ALApplicationTableDataSource.m ALVal
 libapplist_CFLAGS = -I./
 libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
 libapplist_PRIVATE_FRAMEWORKS = AppSupport
-libapplist_ARCHS = armv6 armv7 armv7s arm64
+libapplist_IPHONE_ARCHS = armv6 armv7 armv7s arm64
 
 BUNDLE_NAME = AppList
 AppList_OBJC_FILES = ALApplicationPreferenceViewController.m
