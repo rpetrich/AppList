@@ -529,15 +529,15 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 		NSString *stringAction = [_controller appliedValueForKey:@"action" inCellDescriptor:cellDescriptor sectionDescriptor:sectionDescriptor];
 		SEL action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:sectionDescriptor:indexPath:"]);
 		if ([_controller respondsToSelector:action]) {
-			objc_msgSend(_controller, action, cellDescriptor, sectionDescriptor, indexPath);
+			((void (*)(ALApplicationPreferenceViewController *, SEL, id, NSDictionary *, NSIndexPath *))objc_msgSend)(_controller, action, cellDescriptor, sectionDescriptor, indexPath);
 		} else {
 			action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:sectionDescriptor:"]);
 			if ([_controller respondsToSelector:action]) {
-				objc_msgSend(_controller, action, cellDescriptor, sectionDescriptor);
+				((void (*)(ALApplicationPreferenceViewController *, SEL, id, NSDictionary *))objc_msgSend)(_controller, action, cellDescriptor, sectionDescriptor);
 			} else {
 				action = NSSelectorFromString([stringAction stringByAppendingString:@"FromCellDescriptor:"]);
 				if ([_controller respondsToSelector:action]) {
-					objc_msgSend(_controller, action, cellDescriptor);
+					((void (*)(ALApplicationPreferenceViewController *, SEL, id))objc_msgSend)(_controller, action, cellDescriptor);
 				}
 			}
 		}
