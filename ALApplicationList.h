@@ -8,8 +8,6 @@ enum {
 };
 typedef NSUInteger ALApplicationIconSize;
 
-@class CPDistributedMessagingCenter;
-
 @interface ALApplicationList : NSObject {
 @private
 	NSMutableDictionary *cachedIcons;
