@@ -350,26 +350,16 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	LMResponseBufferFree(bytes);
 }
 
-#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 - (id)init
 {
 	if ((self = [super init])) {
-		mach_port_t bootstrap = MACH_PORT_NULL;
-		task_get_bootstrap_port(mach_task_self(), &bootstrap);
-		CFMachPortContext context = { 0, NULL, NULL, NULL, NULL };
-		CFMachPortRef machPort = CFMachPortCreate(kCFAllocatorDefault, machPortCallback, &context, NULL);
-		CFRunLoopSourceRef machPortSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, machPort, 0);
-		CFRunLoopAddSource(CFRunLoopGetCurrent(), machPortSource, kCFRunLoopDefaultMode);
-		mach_port_t port = CFMachPortGetPort(machPort);
-		kern_return_t err = bootstrap_register(bootstrap, connection.serverName, port);
-		rocketbootstrap_unlock(connection.serverName);
+		kern_return_t err = LMStartService(connection.serverName, CFRunLoopGetCurrent(), machPortCallback);
 		if (err) {
 			NSLog(@"AppList: Unable to register mach server with error %x", err);
 		}
 	}
 	return self;
 }
-#pragma GCC diagnostic warning "-Wdeprecated-declarations"
 
 - (NSDictionary *)applications
 {
