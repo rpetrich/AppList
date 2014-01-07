@@ -76,6 +76,21 @@ static LADirectAPI supportedDirectAPI;
 	return sharedApplicationList;
 }
 
+extern CFTypeRef MGCopyAnswer(CFStringRef query) __attribute__((weak_import));
+
+static BOOL IsIpad(void)
+{
+	BOOL result = NO;
+	if (&MGCopyAnswer != NULL) {
+		CFNumberRef answer = MGCopyAnswer(CFSTR("ipad"));
+		if (answer) {
+			result = [(id)answer boolValue];
+			CFRelease(answer);
+		}
+	}
+	return result;
+}
+
 - (id)init
 {
 	if ((self = [super init])) {
@@ -87,10 +102,13 @@ static LADirectAPI supportedDirectAPI;
 		cachedIcons = [[NSMutableDictionary alloc] init];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveMemoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
 		[pool drain];
-		if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:format:scale:)])
-			supportedDirectAPI = LADirectAPIApplicationIconImageForBundleIdentifier;
-		else if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:roleIdentifier:format:scale:)])
+		if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:format:scale:)]) {
+			// Workaround iOS 7's fake retina mode bugs on iPad
+			if ((kCFCoreFoundationVersionNumber < 800.00) || ([UIDevice currentDevice].userInterfaceIdiom == UIUserInterfaceIdiomPad) || !IsIpad())
+				supportedDirectAPI = LADirectAPIApplicationIconImageForBundleIdentifier;
+		} else if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:roleIdentifier:format:scale:)]) {
 			supportedDirectAPI = LADirectAPIApplicationIconImageForBundleIdentifierRoleIdentifier;
+		}
 	}
 	return self;
 }
