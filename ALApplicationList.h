@@ -4,7 +4,8 @@
 
 enum {
 	ALApplicationIconSizeSmall = 29,
-	ALApplicationIconSizeLarge = 59
+	ALApplicationIconSizeLarge = 59,
+	ALApplicationIconSizeLargePad = 74
 };
 typedef NSUInteger ALApplicationIconSize;
 
