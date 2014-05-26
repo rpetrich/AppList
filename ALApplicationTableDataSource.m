@@ -268,7 +268,8 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 
 - (id)cellDescriptorForRow:(NSInteger)row
 {
-	return isStaticSection ? [_displayNames objectAtIndex:row] : [_displayIdentifiers objectAtIndex:row];
+	NSArray *array = isStaticSection ? _displayNames : _displayIdentifiers;
+	return (row < [array count]) ? [array objectAtIndex:row] : nil;
 }
 
 - (NSInteger)rowCount
@@ -489,12 +490,20 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath
 {
-	return [[_sectionDescriptors objectAtIndex:[indexPath section]] displayIdentifierForRow:[indexPath row]];
+	NSInteger section = indexPath.section;
+	if ([_sectionDescriptors count] > section)
+		return [[_sectionDescriptors objectAtIndex:section] displayIdentifierForRow:indexPath.row];
+	else
+		return nil;
 }
 
 - (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath
 {
-	return [[_sectionDescriptors objectAtIndex:[indexPath section]] cellDescriptorForRow:[indexPath row]];
+	NSInteger section = indexPath.section;
+	if ([_sectionDescriptors count] > section)
+		return [[_sectionDescriptors objectAtIndex:section] cellDescriptorForRow:indexPath.row];
+	else
+		return nil;
 }
 
 - (void)iconLoadedFromNotification:(NSNotification *)notification
