@@ -305,8 +305,11 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 	}
 	if (settingsPath)
 		[settings writeToFile:settingsPath atomically:YES];
-	if (settingsChangeNotification)
+	if (settingsChangeNotification) {
+		CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), self, (CFStringRef)settingsChangeNotification, NULL);
 		notify_post([settingsChangeNotification UTF8String]);
+		CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), self, SettingsChangedNotificationFired, (CFStringRef)settingsChangeNotification, NULL, CFNotificationSuspensionBehaviorDeliverImmediately);
+	}
     [self _updateSections];
 }
 
