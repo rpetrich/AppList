@@ -300,7 +300,7 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 			[settings removeObjectForKey:settingsKeyPrefix];
 		}
 	} else {
-		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor];
+		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor ?: @""];
 		[settings setObject:newValue forKey:key];
 	}
 	if (settingsPath)
@@ -319,7 +319,7 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 	if (singleEnabledMode) {
 		return [[settings objectForKey:settingsKeyPrefix] isEqualToString:cellDescriptor] ? (id)kCFBooleanTrue : (id)kCFBooleanFalse;
 	} else {
-		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor];
+		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor ?: @""];
 		return [settings objectForKey:key] ?: settingsDefaultValue;
 	}
 }
@@ -342,7 +342,7 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 	if (singleEnabledMode) {
 		value = [[settings objectForKey:settingsKeyPrefix] isEqualToString:cellDescriptor] ? @"1" : @"0";
 	} else {
-		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor];
+		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor ?: @""];
 		value = [[settings objectForKey:key] ?: settingsDefaultValue description];
 	}
 	NSDictionary *sectionDescriptor = [descriptors objectAtIndex:indexPath.section];
