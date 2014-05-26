@@ -233,6 +233,9 @@ static void SettingsChangedNotificationFired(CFNotificationCenterRef center, voi
 {
 	UIView *result = [super view];
 	if (!_tableView.superview) {
+		_tableView.frame = result.bounds;
+		[_tableView setScrollsToTop:YES];
+		[result addSubview:_tableView];
 		if ([result respondsToSelector:@selector(setScrollsToTop:)]) {
 			[(UIScrollView *)result setScrollsToTop:NO];
 		}
@@ -245,9 +248,6 @@ static void SettingsChangedNotificationFired(CFNotificationCenterRef center, voi
 			[vc setAutomaticallyAdjustsScrollViewInsets:NO];
 		}
 #endif
-		_tableView.frame = result.bounds;
-		[_tableView setScrollsToTop:YES];
-		[result addSubview:_tableView];
 	}
 	return result;
 }
