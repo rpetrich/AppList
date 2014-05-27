@@ -28,6 +28,7 @@ IPHONE_ARCHS = armv6 armv7 arm64
 SDKVERSION_armv6 = 5.1
 INCLUDE_SDKVERSION_armv6 = 7.1
 THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_Legacy.app/Contents/Developer
+ADDITIONAL_CFLAGS = -Ipublic
 
 include framework/makefiles/common.mk
 include framework/makefiles/library.mk
