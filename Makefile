@@ -34,4 +34,8 @@ include framework/makefiles/common.mk
 include framework/makefiles/library.mk
 include framework/makefiles/bundle.mk
 
+stage::
+	mkdir -p $(THEOS_STAGING_DIR)/usr/include/AppList
+	$(ECHO_NOTHING)rsync -a ./public/* $(THEOS_STAGING_DIR)/usr/include/AppList $(FW_RSYNC_EXCLUDES)$(ECHO_END)
+
 endif
