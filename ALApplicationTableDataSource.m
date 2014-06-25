@@ -121,6 +121,7 @@ static UIImage *defaultImage;
 									@"com.apple.AccountAuthenticationDialog",
 									@"com.apple.MobileReplayer",
 									@"com.apple.SiriViewService",
+									@"com.apple.TencentWeiboAccountMigrationDialog",
 		                            nil];
 	}
 }
