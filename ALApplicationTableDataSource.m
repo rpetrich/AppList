@@ -348,6 +348,8 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)updateCell:(UITableViewCell *)cell forRow:(NSInteger)row withLoadedIconOfSize:(CGFloat)newIconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
+	if ([_displayIdentifiers count] < row)
+		return; // Most likely a search change, so the array was modified.
 	if ([displayIdentifier isEqual:[_displayIdentifiers objectAtIndex:row]] && newIconSize == iconSize) {
 		UIImageView *imageView = cell.imageView;
 		UIImage *image = imageView.image;
