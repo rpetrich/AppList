@@ -308,9 +308,9 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 		return [tableView dequeueReusableCellWithIdentifier:@"ALApplicationLoadingTableViewCell"] ?: [[[ALApplicationLoadingTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"ALApplicationLoadingTableViewCell"] autorelease];
 	}
 	UITableViewCell *cell = CellWithClassName([_descriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell");
-	cell.textLabel.text = [_displayNames objectAtIndex:row];
+	cell.textLabel.text = [_displayNames count] < row ? @"" : [_displayNames objectAtIndex:row];
 	if (iconSize > 0) {
-		NSString *displayIdentifier = [_displayIdentifiers objectAtIndex:row];
+		NSString *displayIdentifier = [_displayIdentifiers count] < row ? @"" : [_displayIdentifiers objectAtIndex:row];
 		ALApplicationList *appList = [ALApplicationList sharedApplicationList];
 		if ([appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier]) {
 			cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
