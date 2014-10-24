@@ -47,6 +47,11 @@ static LMConnection connection = {
 
 @interface SBIconModel ()
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
+- (SBApplicationIcon *)applicationIconForBundleIdentifier:(NSString *)bundleIdentifier;
+@end
+
+@interface SBApplicationController ()
+- (SBApplication *)applicationWithBundleIdentifier:(NSString *)displayIdentifier;
 @end
 
 __attribute__((visibility("hidden")))
@@ -364,8 +369,13 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 - (NSDictionary *)applications
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
-		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
+	if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithBundleIdentifier:)]) {
+		for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
+			[result setObject:[[app displayName] description] forKey:[[app bundleIdentifier] description]];
+	} else {
+		for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
+			[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
+	}
 	return result;
 }
 
@@ -380,20 +390,38 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	NSArray *apps = [CHSharedInstance(SBApplicationController) allApplications];
 	if (predicate)
 		apps = [apps filteredArrayUsingPredicate:predicate];
-	for (SBApplication *app in apps)
-		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
+	if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithBundleIdentifier:)]) {
+		for (SBApplication *app in apps)
+			[result setObject:[[app displayName] description] forKey:[[app bundleIdentifier] description]];
+	} else {
+		for (SBApplication *app in apps)
+			[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
+	}
 	return result;
 }
 
 - (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	SBApplication *app;
+	if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithDisplayIdentifier:)])
+		app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	else if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithBundleIdentifier:)])
+		app = [CHSharedInstance(SBApplicationController) applicationWithBundleIdentifier:displayIdentifier];
+	else
+		return NULL;
+
 	return [app valueForKeyPath:keyPath];
 }
 
 - (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	SBApplication *app;
+	if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithDisplayIdentifier:)])
+		app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	else if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithBundleIdentifier:)])
+		app = [CHSharedInstance(SBApplicationController) applicationWithBundleIdentifier:displayIdentifier];
+	else
+		return NULL;
 	return [app valueForKey:keyPath];
 }
 
@@ -405,10 +433,18 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 		icon = [iconModel applicationIconForDisplayIdentifier:displayIdentifier];
 	else if ([iconModel respondsToSelector:@selector(iconForDisplayIdentifier:)])
 		icon = [iconModel iconForDisplayIdentifier:displayIdentifier];
+	else if ([iconModel respondsToSelector:@selector(applicationIconForBundleIdentifier:)])
+		icon = [iconModel applicationIconForBundleIdentifier:displayIdentifier];
 	else
 		return NULL;
 	BOOL getIconImage = [icon respondsToSelector:@selector(getIconImage:)];
-	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	SBApplication *app;
+	if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithDisplayIdentifier:)])
+		app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	else if ([CHSharedInstance(SBApplicationController) respondsToSelector:@selector(applicationWithBundleIdentifier:)])
+		app = [CHSharedInstance(SBApplicationController) applicationWithBundleIdentifier:displayIdentifier];
+	else
+		return NULL;
 	UIImage *image;
 	if (iconSize <= ALApplicationIconSizeSmall) {
 		image = getIconImage ? [icon getIconImage:0] : [icon smallIcon];
