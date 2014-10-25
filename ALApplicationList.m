@@ -433,12 +433,38 @@ finish:
 
 @end
 
+static inline void CloneMethod(Class victim, SEL sourceMethodName, SEL destMethodName)
+{
+	if (victim) {
+		unsigned int count = 0;
+		Method *methods = class_copyMethodList(victim, &count);
+		Method sourceMethod = NULL;
+		Method destMethod = NULL;
+		if (methods) {
+			for (unsigned int i = 0; i < count; i++) {
+				SEL methodName = method_getName(methods[i]);
+				if (methodName == sourceMethodName)
+					sourceMethod = methods[i];
+				else if (methodName == destMethodName)
+					destMethod = methods[i];
+			}
+			if (sourceMethod && !destMethod) {
+				class_addMethod(victim, destMethodName, method_getImplementation(sourceMethod), method_getTypeEncoding(sourceMethod));
+			}
+			free(methods);
+		}
+	}
+}
+
 CHConstructor
 {
 	CHAutoreleasePoolForScope();
 	if (CHLoadLateClass(SBIconModel)) {
 		CHLoadLateClass(SBIconViewMap);
 		CHLoadLateClass(SBApplicationController);
+		// Add a displayIdentifier property if one doesn't exist to maintain compatibility with plists that use predicates on displayIdentifier
+		CloneMethod(CHClass(SBApplicationController), @selector(applicationWithBundleIdentifier:), @selector(applicationWithDisplayIdentifier:));
+		CloneMethod(objc_getClass("SBApplication"), @selector(bundleIdentifier), @selector(displayIdentifier));
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
 	}
 }
