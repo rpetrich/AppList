@@ -122,6 +122,22 @@ static UIImage *defaultImage;
 									@"com.apple.MobileReplayer",
 									@"com.apple.SiriViewService",
 									@"com.apple.TencentWeiboAccountMigrationDialog",
+									// iOS 8
+									@"com.apple.AskPermissionUI",
+									@"com.apple.CoreAuthUI",
+									@"com.apple.family",
+									@"com.apple.mobileme.fmip1",
+									@"com.apple.GameController",
+									@"com.apple.HealthPrivacyService",
+									@"com.apple.InCallService",
+									@"com.apple.mobilesms.notification",
+									@"com.apple.PhotosViewService",
+									@"com.apple.PreBoard",
+									@"com.apple.PrintKit.Print-Center",
+									@"com.apple.share",
+									@"com.apple.SharedWebCredentialViewService",
+									@"com.apple.webapp",
+									@"com.apple.webapp1",
 		                            nil];
 	}
 }
