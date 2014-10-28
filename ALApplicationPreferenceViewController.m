@@ -30,6 +30,7 @@ __attribute__((visibility("hidden")))
     NSArray *descriptors;
 	id settingsDefaultValue;
 	NSString *settingsPath;
+	NSString *preferencesKey;
 	NSMutableDictionary *settings;
 	NSString *settingsKeyPrefix;
 	NSString *settingsChangeNotification;
@@ -96,6 +97,7 @@ __attribute__((visibility("hidden")))
 	[_dataSource release];
 	[settingsDefaultValue release];
 	[settingsPath release];
+	[preferencesKey release];
 	[settingsKeyPrefix release];
 	[settingsChangeNotification release];
 	[_navigationTitle release];
@@ -141,7 +143,25 @@ __attribute__((visibility("hidden")))
 - (void)settingsChanged
 {
 	[settings release];
-	settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
+	BOOL skipOnDiskRead = NO;
+	if (preferencesKey) {
+		CFPreferencesAppSynchronize((CFStringRef)preferencesKey);
+		CFArrayRef keys = CFPreferencesCopyKeyList((CFStringRef)preferencesKey, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+		if (keys) {
+			if (CFArrayGetCount(keys)) {
+				CFDictionaryRef dict = CFPreferencesCopyMultiple(keys, (CFStringRef)preferencesKey, kCFPreferencesCurrentUser, kCFPreferencesAnyHost);
+				if (dict) {
+					settings = [(NSDictionary *)dict mutableCopy];
+					skipOnDiskRead = YES;
+					CFRelease(dict);
+				}
+			}
+			CFRelease(keys);
+		}
+	}
+	if (!skipOnDiskRead) {
+		settings = [[NSMutableDictionary alloc] initWithContentsOfFile:settingsPath] ?: [[NSMutableDictionary alloc] init];
+	}
 	[_tableView reloadData];
 }
 
@@ -188,6 +208,12 @@ static void SettingsChangedNotificationFired(CFNotificationCenterRef center, voi
 
 	[settingsPath release];
 	settingsPath = [[specifier propertyForKey:@"ALSettingsPath"] retain];
+	[preferencesKey release];
+	if ((kCFCoreFoundationVersionNumber >= 1000) && [settingsPath hasPrefix:@"/var/mobile/Library/Preferences/"] && [settingsPath hasSuffix:@".plist"]) {
+		preferencesKey = [[[settingsPath lastPathComponent] stringByDeletingPathExtension] retain];
+	} else {
+		preferencesKey = nil;
+	}
 
 	[settingsKeyPrefix release];
 	settingsKeyPrefix = [[specifier propertyForKey:singleEnabledMode ? @"ALSettingsKey" : @"ALSettingsKeyPrefix"] ?: @"ALValue-" retain];
@@ -284,10 +310,16 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 {
 	id cellDescriptor = [_dataSource cellDescriptorForIndexPath:indexPath];
 	if ([cellDescriptor isKindOfClass:[NSDictionary class]]) {
-		[settings setObject:newValue forKey:[cellDescriptor objectForKey:@"ALSettingsKey"]];
+		NSString *key = [cellDescriptor objectForKey:@"ALSettingsKey"];
+		[settings setObject:newValue forKey:key];
+		if (preferencesKey) {
+			CFPreferencesSetAppValue((CFStringRef)key, newValue, (CFStringRef)preferencesKey);
+		}
 	} else if (singleEnabledMode) {
 		if ([newValue boolValue]) {
 			[settings setObject:cellDescriptor forKey:settingsKeyPrefix];
+			if (preferencesKey)
+				CFPreferencesSetAppValue((CFStringRef)settingsKeyPrefix, (CFPropertyListRef)cellDescriptor, (CFStringRef)preferencesKey);
 			for (NSIndexPath *otherIndexPath in [_tableView indexPathsForVisibleRows]) {
 				if (![otherIndexPath isEqual:indexPath]) {
 					ALValueCell *otherCell = (ALValueCell *)[_tableView cellForRowAtIndexPath:otherIndexPath];
@@ -298,13 +330,19 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 			}
 		} else if ([[settings objectForKey:settingsKeyPrefix] isEqual:cellDescriptor]) {
 			[settings removeObjectForKey:settingsKeyPrefix];
+			if (preferencesKey)
+				CFPreferencesSetAppValue((CFStringRef)settingsKeyPrefix, NULL, (CFStringRef)preferencesKey);
 		}
 	} else {
 		NSString *key = [settingsKeyPrefix stringByAppendingString:cellDescriptor ?: @""];
 		[settings setObject:newValue forKey:key];
+		if (preferencesKey)
+			CFPreferencesSetAppValue((CFStringRef)key, newValue, (CFStringRef)preferencesKey);
 	}
 	if (settingsPath)
 		[settings writeToFile:settingsPath atomically:YES];
+	if (preferencesKey)
+		CFPreferencesAppSynchronize((CFStringRef)preferencesKey);
 	if (settingsChangeNotification) {
 		CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), self, (CFStringRef)settingsChangeNotification, NULL);
 		notify_post([settingsChangeNotification UTF8String]);
@@ -510,8 +548,8 @@ static id RecursivelyApplyMacro(id input, NSString *macro, NSString *value) {
 {
 	id cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
 	if ([cell isKindOfClass:[ALValueCell class]]) {
-		[cell setDelegate:self];
-		[cell loadValue:[_controller valueForCellAtIndexPath:indexPath] withTitle:[_controller valueTitleForCellAtIndexPath:indexPath]];
+		[(ALValueCell *)cell setDelegate:self];
+		[(ALValueCell *)cell loadValue:[_controller valueForCellAtIndexPath:indexPath] withTitle:[_controller valueTitleForCellAtIndexPath:indexPath]];
 	}
 	return cell;
 }
