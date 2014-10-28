@@ -49,6 +49,10 @@ static LMConnection connection = {
 - (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
 @end
 
+@interface SBIconModel (iOS8)
+- (SBApplicationIcon *)applicationIconForBundleIdentifier:(NSString *)bundleIdentifier;
+@end
+
 __attribute__((visibility("hidden")))
 @interface ALApplicationListImpl : ALApplicationList
 @end
@@ -403,6 +407,8 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	SBIconModel *iconModel = [CHClass(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)] ? [[CHClass(SBIconViewMap) homescreenMap] iconModel] : CHSharedInstance(SBIconModel);
 	if ([iconModel respondsToSelector:@selector(applicationIconForDisplayIdentifier:)])
 		icon = [iconModel applicationIconForDisplayIdentifier:displayIdentifier];
+	else if ([iconModel respondsToSelector:@selector(applicationIconForBundleIdentifier:)])
+		icon = [iconModel applicationIconForBundleIdentifier:displayIdentifier];
 	else if ([iconModel respondsToSelector:@selector(iconForDisplayIdentifier:)])
 		icon = [iconModel iconForDisplayIdentifier:displayIdentifier];
 	else
