@@ -92,6 +92,7 @@ static UIImage *defaultImage;
 		                            @"com.apple.AdSheetPad",
 		                            @"com.apple.DataActivation",
 		                            @"com.apple.DemoApp",
+		                            @"com.apple.Diagnostics",
 		                            @"com.apple.fieldtest",
 		                            @"com.apple.iosdiagnostics",
 		                            @"com.apple.iphoneos.iPodOut",
