@@ -18,11 +18,6 @@ const NSString *ALItemDescriptorTextKey = @"text";
 const NSString *ALItemDescriptorDetailTextKey = @"detail-text";
 const NSString *ALItemDescriptorImageKey = @"image";
 
-static NSInteger DictionaryTextComparator(id a, id b, void *context)
-{
-	return [[(NSDictionary *)context objectForKey:a] localizedCaseInsensitiveCompare:[(NSDictionary *)context objectForKey:b]];
-}
-
 @interface ALApplicationLoadingTableViewCell : UITableViewCell
 @end
 
@@ -146,18 +141,11 @@ static UIImage *defaultImage;
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 	NSDictionary *descriptor = _descriptor;
 	NSString *predicateText = [descriptor objectForKey:ALSectionDescriptorPredicateKey];
-	ALApplicationList *appList = [ALApplicationList sharedApplicationList];
-	NSDictionary *applications;
-	if (predicateText)
-		applications = [appList applicationsFilteredUsingPredicate:[NSPredicate predicateWithFormat:predicateText]];
-	else
-		applications = [appList applications];
-	NSMutableArray *displayIdentifiers = [[applications allKeys] mutableCopy];
-	if ([[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue]) {
-		for (NSString *displayIdentifier in [appList _hiddenDisplayIdentifiers])
-			[displayIdentifiers removeObject:displayIdentifier];
-	}
-	[displayIdentifiers sortUsingFunction:DictionaryTextComparator context:applications];
+	NSPredicate *predicate = predicateText ? [NSPredicate predicateWithFormat:predicateText] : nil;
+	BOOL onlyVisible = [[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue];
+	NSArray *displayIdentifiers = nil;
+	NSDictionary *applications = [[ALApplicationList sharedApplicationList] applicationsFilteredUsingPredicate:predicate onlyVisible:onlyVisible titleSortedIdentifiers:&displayIdentifiers];
+	[displayIdentifiers retain];
 	NSMutableArray *displayNames = [[NSMutableArray alloc] init];
 	for (NSString *displayId in displayIdentifiers)
 		[displayNames addObject:[applications objectForKey:displayId]];

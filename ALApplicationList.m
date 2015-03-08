@@ -1,4 +1,4 @@
-#import "ALApplicationList.h"
+#import "ALApplicationList-private.h"
 
 #import <ImageIO/ImageIO.h>
 #import <UIKit/UIKit.h>
@@ -156,6 +156,27 @@ static BOOL IsIpad(void)
 		return nil;
 	id result = LMResponseConsumePropertyList(&buffer);
 	return [result isKindOfClass:[NSDictionary class]] ? result : nil;
+}
+
+static NSInteger DictionaryTextComparator(id a, id b, void *context)
+{
+	return [[(NSDictionary *)context objectForKey:a] localizedCaseInsensitiveCompare:[(NSDictionary *)context objectForKey:b]];
+}
+
+- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate onlyVisible:(BOOL)onlyVisible titleSortedIdentifiers:(NSArray **)outSortedByTitle
+{
+	NSDictionary *result = [self applicationsFilteredUsingPredicate:predicate];
+	if (onlyVisible) {
+		// Filter out hidden apps
+		NSMutableDictionary *copy = [[result mutableCopy] autorelease];
+		[copy removeObjectsForKeys:[self _hiddenDisplayIdentifiers]];
+		result = copy;
+	}
+	if (outSortedByTitle) {
+		// Generate a sorted list of apps
+		*outSortedByTitle = [[result allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:result];
+	}
+	return result;
 }
 
 - (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
