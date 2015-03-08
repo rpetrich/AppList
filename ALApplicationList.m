@@ -365,23 +365,26 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	return self;
 }
 
+static SBApplicationController *appController(void);
+static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifier);
+
 - (NSDictionary *)applications
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	for (SBApplication *app in [CHSharedInstance(SBApplicationController) allApplications])
+	for (SBApplication *app in [appController() allApplications])
 		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
 	return result;
 }
 
 - (NSInteger)applicationCount
 {
-	return [[CHSharedInstance(SBApplicationController) allApplications] count];
+	return [[appController() allApplications] count];
 }
 
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	NSArray *apps = [CHSharedInstance(SBApplicationController) allApplications];
+	NSArray *apps = [appController() allApplications];
 	if (predicate)
 		apps = [apps filteredArrayUsingPredicate:predicate];
 	for (SBApplication *app in apps)
@@ -391,14 +394,12 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 
 - (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
-	return [app valueForKeyPath:keyPath];
+	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKeyPath:keyPath];
 }
 
 - (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
-	return [app valueForKey:keyPath];
+	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKey:keyPath];
 }
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
@@ -414,7 +415,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 	else
 		return NULL;
 	BOOL getIconImage = [icon respondsToSelector:@selector(getIconImage:)];
-	SBApplication *app = [CHSharedInstance(SBApplicationController) applicationWithDisplayIdentifier:displayIdentifier];
+	SBApplication *app = applicationWithDisplayIdentifier(displayIdentifier);
 	UIImage *image;
 	if (iconSize <= ALApplicationIconSizeSmall) {
 		image = getIconImage ? [icon getIconImage:0] : [icon smallIcon];
@@ -462,6 +463,29 @@ static inline void CloneMethod(Class victim, SEL sourceMethodName, SEL destMetho
 	}
 }
 
+static SEL applicationWithDisplayIdentifierSEL;
+
+static SBApplicationController *appController(void)
+{
+	static SBApplicationController *cached;
+	SBApplicationController *result = cached;
+	if (!result) {
+		// Load the proper selector to fetch an app by its bundle identifier
+		if ([result respondsToSelector:@selector(applicationWithDisplayIdentifier:)]) {
+			applicationWithDisplayIdentifierSEL = @selector(applicationWithDisplayIdentifier:);
+		} else {
+			applicationWithDisplayIdentifierSEL = @selector(applicationWithBundleIdentifier:);
+		}
+		result = cached = CHSharedInstance(SBApplicationController);
+	}
+	return result;
+}
+
+static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifier)
+{
+	return ((SBApplication *(*)(SBApplicationController *, SEL, NSString *))objc_msgSend)(appController(), applicationWithDisplayIdentifierSEL, displayIdentifier);
+}
+
 CHConstructor
 {
 	CHAutoreleasePoolForScope();
@@ -469,7 +493,6 @@ CHConstructor
 		CHLoadLateClass(SBIconViewMap);
 		CHLoadLateClass(SBApplicationController);
 		// Add a displayIdentifier property if one doesn't exist to maintain compatibility with plists that use predicates on displayIdentifier
-		CloneMethod(CHClass(SBApplicationController), @selector(applicationWithBundleIdentifier:), @selector(applicationWithDisplayIdentifier:));
 		CloneMethod(objc_getClass("SBApplication"), @selector(bundleIdentifier), @selector(displayIdentifier));
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
 	}
