@@ -571,6 +571,7 @@ CHConstructor
 		CHLoadLateClass(SBApplicationController);
 		// Add a displayIdentifier property if one doesn't exist to maintain compatibility with plists that use predicates on displayIdentifier
 		CloneMethod(objc_getClass("SBApplication"), @selector(bundleIdentifier), @selector(displayIdentifier));
+		//CloneMethod(CHClass(SBApplicationController), @selector(applicationWithBundleIdentifier:), @selector(applicationWithDisplayIdentifier:));
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
 	}
 }
