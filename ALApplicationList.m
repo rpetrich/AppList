@@ -445,12 +445,24 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 static SBApplicationController *appController(void);
 static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifier);
 
-- (NSDictionary *)applications
+static inline NSDictionary *dictionaryOfApplicationsList(id<NSFastEnumeration> applications)
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
-	for (SBApplication *app in [appController() allApplications])
-		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
+	for (SBApplication *app in applications) {
+		NSString *displayName = [[app displayName] description];
+		if (displayName) {
+			NSString *displayIdentifier = [[app displayIdentifier] description];
+			if (displayIdentifier) {
+				[result setObject:displayName forKey:displayIdentifier];
+			}
+		}
+	}
 	return result;
+}
+
+- (NSDictionary *)applications
+{
+	return dictionaryOfApplicationsList([appController() allApplications]);
 }
 
 - (NSInteger)applicationCount
@@ -460,13 +472,10 @@ static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifi
 
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
 {
-	NSMutableDictionary *result = [NSMutableDictionary dictionary];
 	NSArray *apps = [appController() allApplications];
 	if (predicate)
 		apps = [apps filteredArrayUsingPredicate:predicate];
-	for (SBApplication *app in apps)
-		[result setObject:[[app displayName] description] forKey:[[app displayIdentifier] description]];
-	return result;
+	return dictionaryOfApplicationsList(apps);
 }
 
 - (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
