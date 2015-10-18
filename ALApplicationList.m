@@ -29,7 +29,8 @@ enum {
 	ALMessageIdIconForSize,
 	ALMessageIdValueForKey,
 	ALMessageIdValueForKeyPath,
-	ALMessageIdGetApplicationCount
+	ALMessageIdGetApplicationCount,
+	ALMessageIdGetVisibleApplications
 };
 
 static LMConnection connection = {
@@ -149,13 +150,12 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 
 - (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate onlyVisible:(BOOL)onlyVisible titleSortedIdentifiers:(NSArray **)outSortedByTitle
 {
-	NSDictionary *result = [self applicationsFilteredUsingPredicate:predicate];
-	if (onlyVisible) {
-		// Filter out hidden apps
-		NSMutableDictionary *copy = [[result mutableCopy] autorelease];
-		[copy removeObjectsForKeys:[self _hiddenDisplayIdentifiers]];
-		result = copy;
-	}
+	LMResponseBuffer buffer;
+	if (LMConnectionSendTwoWayData(&connection, onlyVisible ? ALMessageIdGetVisibleApplications : ALMessageIdGetApplications, (CFDataRef)[NSKeyedArchiver archivedDataWithRootObject:predicate], &buffer))
+		return nil;
+	NSDictionary *result = LMResponseConsumePropertyList(&buffer);
+	if (![result isKindOfClass:[NSDictionary class]])
+		return nil;
 	if (outSortedByTitle) {
 		// Generate a sorted list of apps
 		*outSortedByTitle = [[result allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:result];
@@ -359,6 +359,23 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			LMSendPropertyListReply(replyPort, result);
 			return;
 		}
+		case ALMessageIdGetVisibleApplications: {
+			NSDictionary *result;
+			if (data && CFDataGetLength(data)) {
+				NSPredicate *predicate = [NSKeyedUnarchiver unarchiveObjectWithData:(NSData *)data];
+				@try {
+					result = [predicate isKindOfClass:[NSPredicate class]] ? [sharedApplicationList applicationsFilteredUsingPredicate:predicate onlyVisible:YES titleSortedIdentifiers:NULL] : [sharedApplicationList applications];
+				}
+				@catch (NSException *exception) {
+					NSLog(@"AppList: In call to applicationsFilteredUsingPredicate:%@ onlyVisible:YES titleSortedIdentifiers:NULL trapped %@", predicate, exception);
+					break;
+				}
+			} else {
+				result = [sharedApplicationList applications];
+			}
+			LMSendPropertyListReply(replyPort, result);
+			return;
+		}
 		case ALMessageIdIconForSize: {
 			if (!data)
 				break;
@@ -445,7 +462,7 @@ static void machPortCallback(CFMachPortRef port, void *bytes, CFIndex size, void
 static SBApplicationController *appController(void);
 static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifier);
 
-static inline NSDictionary *dictionaryOfApplicationsList(id<NSFastEnumeration> applications)
+static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumeration> applications)
 {
 	NSMutableDictionary *result = [NSMutableDictionary dictionary];
 	for (SBApplication *app in applications) {
@@ -476,6 +493,29 @@ static inline NSDictionary *dictionaryOfApplicationsList(id<NSFastEnumeration> a
 	if (predicate)
 		apps = [apps filteredArrayUsingPredicate:predicate];
 	return dictionaryOfApplicationsList(apps);
+}
+
+- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate onlyVisible:(BOOL)onlyVisible titleSortedIdentifiers:(NSArray **)outSortedByTitle
+{
+	NSArray *apps = [appController() allApplications];
+	if (predicate)
+		apps = [apps filteredArrayUsingPredicate:predicate];
+	NSMutableDictionary *result;
+	if (onlyVisible) {
+		if (kCFCoreFoundationVersionNumber > 1000) {
+			result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"not tags contains 'hidden'"]]);
+		} else {
+			result = dictionaryOfApplicationsList(apps);
+			[result removeObjectsForKeys:[self _hiddenDisplayIdentifiers]];
+		}
+	} else {
+		result = dictionaryOfApplicationsList(apps);
+	}
+	if (outSortedByTitle) {
+		// Generate a sorted list of apps
+		*outSortedByTitle = [[result allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:result];
+	}
+	return result;
 }
 
 - (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
