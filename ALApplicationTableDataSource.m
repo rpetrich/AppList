@@ -2,7 +2,7 @@
 
 #import "ALApplicationList-private.h"
 
-#import <UIKit/UIKit2.h>
+#import <UIKit/UIKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 
 const NSString *ALSectionDescriptorTitleKey = @"title";

@@ -26,9 +26,9 @@ TARGET_IPHONEOS_DEPLOYMENT_VERSION := 3.0
 IPHONE_ARCHS = armv6 armv7 arm64
 
 SDKVERSION_armv6 = 5.1
-INCLUDE_SDKVERSION_armv6 = 8.1
+INCLUDE_SDKVERSION_armv6 = 8.4
 THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_Legacy.app/Contents/Developer
-ADDITIONAL_CFLAGS = -Ipublic
+ADDITIONAL_CFLAGS = -Ipublic -Ioverlayheaders -I.
 
 include framework/makefiles/common.mk
 include framework/makefiles/library.mk

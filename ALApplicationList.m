@@ -2,25 +2,17 @@
 
 #import <ImageIO/ImageIO.h>
 #import <UIKit/UIKit.h>
-#import <SpringBoard/SpringBoard.h>
 #import <CaptainHook/CaptainHook.h>
 #import <dlfcn.h>
 
 #define ROCKETBOOTSTRAP_LOAD_DYNAMIC
 #import "LightMessaging/LightMessaging.h"
 
+#import "SpringBoard.h"
+
 CHDeclareClass(SBApplicationController);
 CHDeclareClass(SBIconModel);
 CHDeclareClass(SBIconViewMap);
-
-@interface SBIconViewMap : NSObject {
-	SBIconModel *_model;
-	// ...
-}
-+ (SBIconViewMap *)switcherMap;
-+ (SBIconViewMap *)homescreenMap;
-- (SBIconModel *)iconModel;
-@end
 
 @interface UIImage (Private)
 + (UIImage *)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale;
@@ -44,14 +36,6 @@ static LMConnection connection = {
 	MACH_PORT_NULL,
 	"applist.datasource"
 };
-
-@interface SBIconModel ()
-- (SBApplicationIcon *)applicationIconForDisplayIdentifier:(NSString *)displayIdentifier;
-@end
-
-@interface SBIconModel (iOS8)
-- (SBApplicationIcon *)applicationIconForBundleIdentifier:(NSString *)bundleIdentifier;
-@end
 
 __attribute__((visibility("hidden")))
 @interface ALApplicationListImpl : ALApplicationList
@@ -563,13 +547,13 @@ static SBApplicationController *appController(void)
 	static SBApplicationController *cached;
 	SBApplicationController *result = cached;
 	if (!result) {
+		result = cached = CHSharedInstance(SBApplicationController);
 		// Load the proper selector to fetch an app by its bundle identifier
 		if ([result respondsToSelector:@selector(applicationWithDisplayIdentifier:)]) {
 			applicationWithDisplayIdentifierSEL = @selector(applicationWithDisplayIdentifier:);
 		} else {
 			applicationWithDisplayIdentifierSEL = @selector(applicationWithBundleIdentifier:);
 		}
-		result = cached = CHSharedInstance(SBApplicationController);
 	}
 	return result;
 }
