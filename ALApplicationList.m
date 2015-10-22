@@ -566,8 +566,9 @@ finish:
 
 @end
 
-static inline void CloneMethod(Class victim, SEL sourceMethodName, SEL destMethodName)
+static inline BOOL CloneMethod(Class victim, SEL sourceMethodName, SEL destMethodName)
 {
+	BOOL result = NO;
 	if (victim) {
 		unsigned int count = 0;
 		Method *methods = class_copyMethodList(victim, &count);
@@ -583,11 +584,14 @@ static inline void CloneMethod(Class victim, SEL sourceMethodName, SEL destMetho
 			}
 			if (sourceMethod && !destMethod) {
 				class_addMethod(victim, destMethodName, method_getImplementation(sourceMethod), method_getTypeEncoding(sourceMethod));
+				result = YES;
 			}
 			free(methods);
 		}
 	}
+	return result;
 }
+
 
 static SEL applicationWithDisplayIdentifierSEL;
 
@@ -598,10 +602,10 @@ static SBApplicationController *appController(void)
 	if (!result) {
 		result = cached = CHSharedInstance(SBApplicationController);
 		// Load the proper selector to fetch an app by its bundle identifier
-		if ([result respondsToSelector:@selector(applicationWithDisplayIdentifier:)]) {
-			applicationWithDisplayIdentifierSEL = @selector(applicationWithDisplayIdentifier:);
-		} else {
+		if ([result respondsToSelector:@selector(applicationWithBundleIdentifier:)]) {
 			applicationWithDisplayIdentifierSEL = @selector(applicationWithBundleIdentifier:);
+		} else {
+			applicationWithDisplayIdentifierSEL = @selector(applicationWithDisplayIdentifier:);
 		}
 	}
 	return result;
@@ -612,15 +616,69 @@ static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifi
 	return ((SBApplication *(*)(SBApplicationController *, SEL, NSString *))objc_msgSend)(appController(), applicationWithDisplayIdentifierSEL, displayIdentifier);
 }
 
+CHDeclareClass(SBApplication);
+
+CHOptimizedClassMethod1(super, BOOL, SBApplication, resolveInstanceMethod, SEL, selector)
+{
+	if (selector == @selector(displayIdentifier)) {
+		if (CloneMethod(self, @selector(bundleIdentifier), @selector(displayIdentifier))) {
+			NSLog(@"AppList: Added -[SBApplication displayIdentifier] for compatibility purposes");
+			return YES;
+		}
+	}
+	return CHSuper1(SBApplication, resolveInstanceMethod, selector);
+}
+
+// Workaround tweaks that mistakenly call applicationWithDisplayIdentifier:
+static BOOL cloned;
+
+CHOptimizedMethod1(super, BOOL, SBApplicationController, respondsToSelector, SEL, selector)
+{
+	if (selector == @selector(applicationWithDisplayIdentifier:)) {
+		BOOL result = CHSuper1(SBApplicationController, respondsToSelector, selector);
+		return cloned ? NO : result;
+	}
+	return CHSuper1(SBApplicationController, respondsToSelector, selector);
+}
+
+CHOptimizedClassMethod1(super, BOOL, SBApplicationController, instancesRespondToSelector, SEL, selector)
+{
+	if (selector == @selector(applicationWithDisplayIdentifier:)) {
+		BOOL result = CHSuper1(SBApplicationController, instancesRespondToSelector, selector);
+		return cloned ? NO : result;
+	}
+	return CHSuper1(SBApplicationController, instancesRespondToSelector, selector);
+}
+
+CHOptimizedClassMethod1(super, BOOL, SBApplicationController, resolveInstanceMethod, SEL, selector)
+{
+	if (selector == @selector(applicationWithDisplayIdentifier:)) {
+		if (CloneMethod(self, @selector(applicationWithBundleIdentifier:), @selector(applicationWithDisplayIdentifier:))) {
+			NSLog(@"AppList: Added -[SBApplicationController applicationWithDisplayIdentifier:] for compatibility purposes");
+			cloned = YES;
+			return YES;
+		}
+	}
+	return CHSuper1(SBApplicationController, resolveInstanceMethod, selector);
+}
+
 CHConstructor
 {
 	CHAutoreleasePoolForScope();
 	if (CHLoadLateClass(SBIconModel)) {
 		CHLoadLateClass(SBIconViewMap);
+		CHLoadLateClass(SBApplication);
 		CHLoadLateClass(SBApplicationController);
 		// Add a displayIdentifier property if one doesn't exist to maintain compatibility with plists that use predicates on displayIdentifier
-		CloneMethod(objc_getClass("SBApplication"), @selector(bundleIdentifier), @selector(displayIdentifier));
-		//CloneMethod(CHClass(SBApplicationController), @selector(applicationWithBundleIdentifier:), @selector(applicationWithDisplayIdentifier:));
+		if (kCFCoreFoundationVersionNumber > 1000) {
+			CHClassHook1(SBApplication, resolveInstanceMethod);
+			// Only add applicationWithDisplayIdentifier: on iOS 8
+			if (kCFCoreFoundationVersionNumber < 1240) {
+				CHHook1(SBApplicationController, respondsToSelector);
+				CHClassHook1(SBApplicationController, instancesRespondToSelector);
+				CHClassHook1(SBApplicationController, resolveInstanceMethod);
+			}
+		}
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
 	}
 }
