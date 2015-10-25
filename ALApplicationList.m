@@ -306,7 +306,7 @@ skip:
 	if ([NSThread isMainThread])
 		[self postNotificationWithUserInfo:userInfo];
 	else
-		[self performSelectorOnMainThread:@selector(postNotificationWithUserInfo:) withObject:userInfo waitUntilDone:YES];
+		[self performSelectorOnMainThread:@selector(postNotificationWithUserInfo:) withObject:userInfo waitUntilDone:NO];
 	return CGImageRetain(result);
 }
 
