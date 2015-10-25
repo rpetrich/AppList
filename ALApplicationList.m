@@ -624,7 +624,7 @@ CHDeclareClass(SBApplication);
 CHOptimizedClassMethod1(super, BOOL, SBApplication, resolveInstanceMethod, SEL, selector)
 {
 	if (selector == @selector(displayIdentifier)) {
-		if (CloneMethod(self, @selector(bundleIdentifier), @selector(displayIdentifier))) {
+		if (CloneMethod(CHClass(SBApplication), @selector(bundleIdentifier), @selector(displayIdentifier))) {
 			NSLog(@"AppList: Added -[SBApplication displayIdentifier] for compatibility purposes");
 			return YES;
 		}
