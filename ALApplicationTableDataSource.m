@@ -214,7 +214,8 @@ static inline NSString *Localize(NSBundle *bundle, NSString *string)
 
 - (NSString *)displayIdentifierForRow:(NSInteger)row
 {
-	return [_displayIdentifiers objectAtIndex:row];
+	NSArray *array = _displayIdentifiers;
+	return (row < [array count]) ? [array objectAtIndex:row] : nil;
 }
 
 - (id)cellDescriptorForRow:(NSInteger)row
