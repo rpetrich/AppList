@@ -530,6 +530,9 @@ static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumera
 
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
+	if (![NSThread isMainThread]) {
+		return [super copyIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+	}
 	SBIcon *icon;
 	SBIconModel *iconModel = [CHClass(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)] ? [[CHClass(SBIconViewMap) homescreenMap] iconModel] : CHSharedInstance(SBIconModel);
 	if ([iconModel respondsToSelector:@selector(applicationIconForDisplayIdentifier:)])
