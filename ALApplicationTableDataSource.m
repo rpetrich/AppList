@@ -136,6 +136,19 @@ static UIImage *defaultImage;
 	[super dealloc];
 }
 
+- (void)potentialLoadFail
+{
+	if ([ALApplicationList sharedApplicationList].applicationCount == 0) {
+		static BOOL hasFailedAlready;
+		if (!hasFailedAlready) {
+			hasFailedAlready = YES;
+			UIAlertView *av = [[UIAlertView alloc] initWithTitle:@"Unable To Load Apps" message:@"AppList was unable to load the list of installed applications.\n\nPotential causes include the device being in safe mode, AppList being disabled or tampered with, RocketBootstrap being disabled or tampered with, and conflicts between packages currently installed on this device." delegate:nil cancelButtonTitle:@"OK" otherButtonTitles:nil];
+			[av show];
+			[av release];
+		}
+	}
+}
+
 - (void)loadContent
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -145,6 +158,9 @@ static UIImage *defaultImage;
 	BOOL onlyVisible = [[descriptor objectForKey:ALSectionDescriptorSuppressHiddenAppsKey] boolValue];
 	NSArray *displayIdentifiers = nil;
 	NSDictionary *applications = [[ALApplicationList sharedApplicationList] applicationsFilteredUsingPredicate:predicate onlyVisible:onlyVisible titleSortedIdentifiers:&displayIdentifiers];
+	if ([applications count] == 0) {
+		[self performSelectorOnMainThread:@selector(potentialLoadFail) withObject:nil waitUntilDone:NO];
+	}
 	[displayIdentifiers retain];
 	NSMutableArray *displayNames = [[NSMutableArray alloc] init];
 	for (NSString *displayId in displayIdentifiers)
