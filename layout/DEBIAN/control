@@ -1,6 +1,6 @@
 Package: applist
 Name: AppList
-Version: 1.5.10
+Version: 1.5.11
 Architecture: iphoneos-arm
 Description: Allow extensions to read the list of installed apps
 Maintainer: Ryan Petrich <rpetrich@gmail.com>
