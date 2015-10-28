@@ -276,9 +276,9 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 		return [tableView dequeueReusableCellWithIdentifier:@"ALApplicationLoadingTableViewCell"] ?: [[[ALApplicationLoadingTableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"ALApplicationLoadingTableViewCell"] autorelease];
 	}
 	UITableViewCell *cell = CellWithClassName([_descriptor objectForKey:ALSectionDescriptorCellClassNameKey] ?: @"UITableViewCell");
-	cell.textLabel.text = [_displayNames objectAtIndex:row];
+	cell.textLabel.text = [_displayNames count] < row ? @"" : [_displayNames objectAtIndex:row];
 	if (iconSize > 0) {
-		NSString *displayIdentifier = [_displayIdentifiers objectAtIndex:row];
+		NSString *displayIdentifier = [_displayIdentifiers count] < row ? @"" : [_displayIdentifiers objectAtIndex:row];
 		ALApplicationList *appList = [ALApplicationList sharedApplicationList];
 		if ([appList hasCachedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier]) {
 			cell.imageView.image = [appList iconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
@@ -316,6 +316,8 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)updateCell:(UITableViewCell *)cell forRow:(NSInteger)row withLoadedIconOfSize:(CGFloat)newIconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
+	if ([_displayIdentifiers count] < row)
+		return; // Most likely a search change, so the array was modified.
 	if ([displayIdentifier isEqual:[_displayIdentifiers objectAtIndex:row]] && newIconSize == iconSize) {
 		UIImageView *imageView = cell.imageView;
 		UIImage *image = imageView.image;
