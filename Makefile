@@ -6,7 +6,7 @@ all clean package install::
 else
 
 LIBRARY_NAME = libapplist
-libapplist_OBJC_FILES = ALApplicationList.m ALApplicationTableDataSource.m ALValueCell.m
+libapplist_OBJC_FILES = ALApplicationList.x ALApplicationTableDataSource.m ALValueCell.m
 libapplist_CFLAGS = -I./
 libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
 libapplist_PRIVATE_FRAMEWORKS = AppSupport
