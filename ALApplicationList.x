@@ -10,10 +10,6 @@
 
 #import "SpringBoard.h"
 
-CHDeclareClass(SBApplicationController);
-CHDeclareClass(SBIconModel);
-CHDeclareClass(SBIconViewMap);
-
 @interface UIImage (Private)
 + (UIImage *)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier format:(int)format scale:(CGFloat)scale;
 + (UIImage *)_applicationIconImageForBundleIdentifier:(NSString *)bundleIdentifier roleIdentifier:(NSString *)roleIdentifier format:(int)format scale:(CGFloat)scale;
@@ -55,7 +51,7 @@ static LADirectAPI supportedDirectAPI;
 
 + (void)initialize
 {
-	if (self == [ALApplicationList class] && !CHClass(SBIconModel)) {
+	if (self == [ALApplicationList class] && !%c(SBIconModel)) {
 		sharedApplicationList = [[self alloc] init];
 	}
 }
@@ -534,7 +530,7 @@ static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumera
 		return [super copyIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
 	}
 	SBIcon *icon;
-	SBIconModel *iconModel = [CHClass(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)] ? [[CHClass(SBIconViewMap) homescreenMap] iconModel] : CHSharedInstance(SBIconModel);
+	SBIconModel *iconModel = [%c(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)] ? [[%c(SBIconViewMap) homescreenMap] iconModel] : (SBIconModel *)[%c(SBIconModel) sharedInstance];
 	if ([iconModel respondsToSelector:@selector(applicationIconForDisplayIdentifier:)])
 		icon = [iconModel applicationIconForDisplayIdentifier:displayIdentifier];
 	else if ([iconModel respondsToSelector:@selector(applicationIconForBundleIdentifier:)])
@@ -603,7 +599,7 @@ static SBApplicationController *appController(void)
 	static SBApplicationController *cached;
 	SBApplicationController *result = cached;
 	if (!result) {
-		result = cached = CHSharedInstance(SBApplicationController);
+		result = cached = (SBApplicationController *)[%c(SBApplicationController) sharedInstance];
 		// Load the proper selector to fetch an app by its bundle identifier
 		if ([result respondsToSelector:@selector(applicationWithBundleIdentifier:)]) {
 			applicationWithDisplayIdentifierSEL = @selector(applicationWithBundleIdentifier:);
@@ -619,41 +615,51 @@ static SBApplication *applicationWithDisplayIdentifier(NSString *displayIdentifi
 	return ((SBApplication *(*)(SBApplicationController *, SEL, NSString *))objc_msgSend)(appController(), applicationWithDisplayIdentifierSEL, displayIdentifier);
 }
 
-CHDeclareClass(SBApplication);
+%group SBApplicationHooks
 
-CHOptimizedClassMethod1(super, BOOL, SBApplication, resolveInstanceMethod, SEL, selector)
+%hook SBApplication
+
++ (BOOL)resolveInstanceMethod:(SEL)selector
 {
 	if (selector == @selector(displayIdentifier)) {
-		if (CloneMethod(CHClass(SBApplication), @selector(bundleIdentifier), @selector(displayIdentifier))) {
+		if (CloneMethod(%c(SBApplication), @selector(bundleIdentifier), @selector(displayIdentifier))) {
 			NSLog(@"AppList: Added -[SBApplication displayIdentifier] for compatibility purposes");
 			return YES;
 		}
 	}
-	return CHSuper1(SBApplication, resolveInstanceMethod, selector);
+	return %orig();
 }
+
+%end
+
+%end
 
 // Workaround tweaks that mistakenly call applicationWithDisplayIdentifier:
 static BOOL cloned;
 
-CHOptimizedMethod1(super, BOOL, SBApplicationController, respondsToSelector, SEL, selector)
+%group SBApplicationControllerHooks
+
+%hook SBApplicationController
+
+- (BOOL)respondsToSelector:(SEL)selector
 {
 	if (selector == @selector(applicationWithDisplayIdentifier:)) {
-		BOOL result = CHSuper1(SBApplicationController, respondsToSelector, selector);
+		BOOL result = %orig();
 		return cloned ? NO : result;
 	}
-	return CHSuper1(SBApplicationController, respondsToSelector, selector);
+	return %orig();
 }
 
-CHOptimizedClassMethod1(super, BOOL, SBApplicationController, instancesRespondToSelector, SEL, selector)
++ (BOOL)instancesRespondToSelector:(SEL)selector
 {
 	if (selector == @selector(applicationWithDisplayIdentifier:)) {
-		BOOL result = CHSuper1(SBApplicationController, instancesRespondToSelector, selector);
+		BOOL result = %orig();
 		return cloned ? NO : result;
 	}
-	return CHSuper1(SBApplicationController, instancesRespondToSelector, selector);
+	return %orig();
 }
 
-CHOptimizedClassMethod1(super, BOOL, SBApplicationController, resolveInstanceMethod, SEL, selector)
++ (BOOL)resolveInstanceMethod:(SEL)selector
 {
 	if (selector == @selector(applicationWithDisplayIdentifier:)) {
 		if (CloneMethod(self, @selector(applicationWithBundleIdentifier:), @selector(applicationWithDisplayIdentifier:))) {
@@ -662,26 +668,26 @@ CHOptimizedClassMethod1(super, BOOL, SBApplicationController, resolveInstanceMet
 			return YES;
 		}
 	}
-	return CHSuper1(SBApplicationController, resolveInstanceMethod, selector);
+	return %orig();
 }
 
-CHConstructor
+%end
+
+%end
+
+%ctor
 {
-	CHAutoreleasePoolForScope();
-	if (CHLoadLateClass(SBIconModel)) {
-		CHLoadLateClass(SBIconViewMap);
-		CHLoadLateClass(SBApplication);
-		CHLoadLateClass(SBApplicationController);
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	if (%c(SBIconModel)) {
 		// Add a displayIdentifier property if one doesn't exist to maintain compatibility with plists that use predicates on displayIdentifier
 		if (kCFCoreFoundationVersionNumber > 1000) {
-			CHClassHook1(SBApplication, resolveInstanceMethod);
+			%init(SBApplicationHooks);
 			// Only add applicationWithDisplayIdentifier: on iOS 8
 			if (kCFCoreFoundationVersionNumber < 1240) {
-				CHHook1(SBApplicationController, respondsToSelector);
-				CHClassHook1(SBApplicationController, instancesRespondToSelector);
-				CHClassHook1(SBApplicationController, resolveInstanceMethod);
+				%init(SBApplicationControllerHooks);
 			}
 		}
 		sharedApplicationList = [[ALApplicationListImpl alloc] init];
 	}
+	[pool drain];
 }
