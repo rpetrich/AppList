@@ -524,13 +524,33 @@ static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumera
 	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKey:keyPath];
 }
 
+static SBIconModel *homescreenIconModel(void)
+{
+	static SBIconModel *iconModel;
+	if (!iconModel) {
+		if ([%c(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)]) {
+			SBIconViewMap *viewMap;
+			if ([%c(SBIconViewMap) respondsToSelector:@selector(homescreenMap)]) {
+				viewMap = [%c(SBIconViewMap) homescreenMap];
+			} else {
+				viewMap = [(SBIconController *)[%c(SBIconController) sharedInstance] homescreenIconViewMap];
+			}
+			iconModel = [viewMap iconModel];
+		} else {
+			iconModel = (SBIconModel *)[%c(SBIconModel) sharedInstance];
+		}
+		iconModel = [iconModel retain];
+	}
+	return iconModel;
+}
+
 - (CGImageRef)copyIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
 	if (![NSThread isMainThread]) {
 		return [super copyIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
 	}
 	SBIcon *icon;
-	SBIconModel *iconModel = [%c(SBIconViewMap) instancesRespondToSelector:@selector(iconModel)] ? [[%c(SBIconViewMap) homescreenMap] iconModel] : (SBIconModel *)[%c(SBIconModel) sharedInstance];
+	SBIconModel *iconModel = homescreenIconModel();
 	if ([iconModel respondsToSelector:@selector(applicationIconForDisplayIdentifier:)])
 		icon = [iconModel applicationIconForDisplayIdentifier:displayIdentifier];
 	else if ([iconModel respondsToSelector:@selector(applicationIconForBundleIdentifier:)])
