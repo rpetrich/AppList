@@ -300,7 +300,7 @@ skip:
 	                          displayIdentifier, ALDisplayIdentifierKey,
 	                          nil];
 	if ([NSThread isMainThread])
-		[self postNotificationWithUserInfo:userInfo];
+		[self performSelector:@selector(postNotificationWithUserInfo:) withObject:userInfo afterDelay:0.0];
 	else
 		[self performSelectorOnMainThread:@selector(postNotificationWithUserInfo:) withObject:userInfo waitUntilDone:NO];
 	return CGImageRetain(result);
