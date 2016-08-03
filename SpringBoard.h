@@ -41,3 +41,11 @@
 @interface SBApplicationController : NSObject
 - (NSArray *)allApplications;
 @end
+
+@interface SBIconController : NSObject
++ (id)sharedInstance;
+@end
+
+@interface SBIconController (iOS93)
+- (SBIconViewMap *)homescreenIconViewMap;
+@end
