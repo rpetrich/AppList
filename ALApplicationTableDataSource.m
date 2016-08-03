@@ -314,9 +314,10 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 	return cell;
 }
 
-- (void)updateCell:(UITableViewCell *)cell forRow:(NSInteger)row withLoadedIconOfSize:(CGFloat)newIconSize forDisplayIdentifier:(NSString *)displayIdentifier
+- (void)updateIndexPath:(NSIndexPath *)indexPath ofTableView:(UITableView *)tableView withLoadedIconOfSize:(CGFloat)newIconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	if ([displayIdentifier isEqual:[_displayIdentifiers objectAtIndex:row]] && newIconSize == iconSize) {
+	if ([displayIdentifier isEqual:[_displayIdentifiers objectAtIndex:indexPath.row]] && newIconSize == iconSize) {
+		UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
 		UIImageView *imageView = cell.imageView;
 		UIImage *image = imageView.image;
 		if (!image || (image == defaultImage)) {
@@ -481,9 +482,8 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 	CGFloat iconSize = [[userInfo objectForKey:ALIconSizeKey] floatValue];
 	for (NSIndexPath *indexPath in _tableView.indexPathsForVisibleRows) {
 		NSInteger section = indexPath.section;
-		NSInteger row = indexPath.row;
 		ALApplicationTableDataSourceSection *sectionObject = [_sectionDescriptors objectAtIndex:section];
-		[sectionObject updateCell:[_tableView cellForRowAtIndexPath:indexPath] forRow:row withLoadedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
+		[sectionObject updateIndexPath:indexPath ofTableView:_tableView withLoadedIconOfSize:iconSize forDisplayIdentifier:displayIdentifier];
 	}
 }
 
