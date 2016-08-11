@@ -316,7 +316,7 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 
 - (void)updateIndexPath:(NSIndexPath *)indexPath ofTableView:(UITableView *)tableView withLoadedIconOfSize:(CGFloat)newIconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
-	if ([displayIdentifier isEqual:[_displayIdentifiers objectAtIndex:indexPath.row]] && newIconSize == iconSize) {
+	if ((loadingState == 0) && [displayIdentifier isEqual:[_displayIdentifiers objectAtIndex:indexPath.row]] && newIconSize == iconSize) {
 		UITableViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
 		UIImageView *imageView = cell.imageView;
 		UIImage *image = imageView.image;
