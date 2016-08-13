@@ -9,7 +9,6 @@ LIBRARY_NAME = libapplist
 libapplist_OBJC_FILES = ALApplicationList.x ALApplicationTableDataSource.m ALValueCell.m
 libapplist_CFLAGS = -I./
 libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
-libapplist_PRIVATE_FRAMEWORKS = AppSupport
 libapplist_LIBRARIES = MobileGestalt
 libapplist_IPHONE_ARCHS = armv6 armv7 armv7s arm64
 
