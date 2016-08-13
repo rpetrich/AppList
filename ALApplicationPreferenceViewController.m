@@ -209,7 +209,7 @@ static void SettingsChangedNotificationFired(CFNotificationCenterRef center, voi
 	[settingsPath release];
 	settingsPath = [[specifier propertyForKey:@"ALSettingsPath"] retain];
 	[preferencesKey release];
-	if ((kCFCoreFoundationVersionNumber >= 1000) && [settingsPath hasPrefix:@"/var/mobile/Library/Preferences/"] && [settingsPath hasSuffix:@".plist"]) {
+	if ((kCFCoreFoundationVersionNumber >= 1000) && ([settingsPath hasPrefix:@"/var/mobile/Library/Preferences/"]||[settingsPath hasPrefix:@"/Library/MobileSubstrate"]) && [settingsPath hasSuffix:@".plist"]) {
 		preferencesKey = [[[settingsPath lastPathComponent] stringByDeletingPathExtension] retain];
 	} else {
 		preferencesKey = nil;
@@ -339,8 +339,28 @@ static UIEdgeInsets EdgeInsetsForViewController(UIViewController *vc)
 		if (preferencesKey)
 			CFPreferencesSetAppValue((CFStringRef)key, newValue, (CFStringRef)preferencesKey);
 	}
-	if (settingsPath)
+	if (settingsPath && [settingsPath hasPrefix:@"/Library/MobileSubstrate"]){
+		NSMutableDictionary* CleanDict=[NSMutableDictionary dictionaryWithContentsOfFile:settingsPath];
+		NSMutableArray* BundleIDList=[NSMutableArray array];
+		NSMutableDictionary* CleanDictBundleFilters=[[CleanDict objectForKey:@"Filter"] mutableCopy];
+		for(NSString* Key in [settings allKeys]){
+			if([[settings objectForKey:Key] boolValue]){
+				[BundleIDList addObject:Key];
+
+			}
+
+		}
+		[CleanDictBundleFilters setObject:BundleIDList forKey:@"Bundles"];
+		[CleanDict setObject:CleanDictBundleFilters forKey:@"Filter"];
+
+		[CleanDict writeToFile:settingsPath atomically:YES];
+		[CleanDict release];
+		[BundleIDList release];
+		[CleanDictBundleFilters release];
+	}
+	else if(settingsPath){
 		[settings writeToFile:settingsPath atomically:YES];
+	}
 	if (preferencesKey)
 		CFPreferencesAppSynchronize((CFStringRef)preferencesKey);
 	if (settingsChangeNotification) {
