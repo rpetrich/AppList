@@ -8,6 +8,11 @@
 {
 }
 
+- (void)loadValue:(id)value withTitle:(NSString *)title
+{
+	[self loadValue:value];
+}
+
 - (void)didSelect
 {
 }
@@ -60,6 +65,23 @@
 	[self setAccessoryType:(type == UITableViewCellAccessoryNone) ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone];
 	id value = [NSNumber numberWithBool:type == UITableViewCellAccessoryNone];
 	[[self delegate] valueCell:self didChangeToValue:value];
+}
+
+@end
+
+@implementation ALDisclosureIndicatedCell
+
+- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+	if ((self = [super initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:reuseIdentifier])) {
+		self.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+	}
+	return self;
+}
+
+- (void)loadValue:(id)value withTitle:(NSString *)title
+{
+	self.detailTextLabel.text = title ?: [value description];
 }
 
 @end

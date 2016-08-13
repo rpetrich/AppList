@@ -1,11 +1,12 @@
 Package: applist
 Name: AppList
-Version: 1.4.3
+Version: 1.5.12
 Architecture: iphoneos-arm
 Description: Allow extensions to read the list of installed apps
 Maintainer: Ryan Petrich <rpetrich@gmail.com>
 Author: Ryan Petrich <rpetrich@gmail.com>
-Depends: mobilesubstrate, firmware (>= 3.0)
+Depends: mobilesubstrate (>= 0.9.5000), firmware (>= 3.0), com.rpetrich.rocketbootstrap (>= 1.0.3) | firmware (<< 7.0)
+Conflicts: com.a3tweaks.polus (<< 2.0.7)
 Section: System
 Depiction: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=AppListDp
 Website: http://moreinfo.thebigboss.org/moreinfo/depiction.php?file=AppListDp

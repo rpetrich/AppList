@@ -5,15 +5,10 @@
 
 @interface ALApplicationTableDataSource : NSObject <UITableViewDataSource> {
 @private
-	ALApplicationList *appList;
 	NSMutableArray *_sectionDescriptors;
-	NSMutableArray *_displayIdentifiers;
-	NSMutableArray *_displayNames;
-	NSMutableArray *_iconsToLoad;
-	OSSpinLock spinLock;
 	UITableView *_tableView;
-	UIImage *_defaultImage;
 	NSBundle *_localizationBundle;
+	BOOL _loadsAsynchronously;
 }
 
 + (NSArray *)standardSectionDescriptors;
@@ -24,13 +19,16 @@
 @property (nonatomic, copy) NSArray *sectionDescriptors;
 @property (nonatomic, retain) UITableView *tableView;
 @property (nonatomic, retain) NSBundle *localizationBundle;
+@property (nonatomic, assign) BOOL loadsAsynchronously;
 
-- (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell
+- (id)cellDescriptorForIndexPath:(NSIndexPath *)indexPath; // NSDictionary if custom cell; NSString if app cell; nil if loading
 - (NSString *)displayIdentifierForIndexPath:(NSIndexPath *)indexPath;
 
 - (void)insertSectionDescriptor:(NSDictionary *)sectionDescriptor atIndex:(NSInteger)index;
 - (void)removeSectionDescriptorAtIndex:(NSInteger)index;
 - (void)removeSectionDescriptorsAtIndexes:(NSIndexSet *)indexSet;
+
+- (BOOL)waitUntilDate:(NSDate *)date forContentInSectionAtIndex:(NSInteger)sectionIndex;
 
 @end
 

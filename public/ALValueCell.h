@@ -9,7 +9,8 @@
 
 @property (nonatomic, assign) id<ALValueCellDelegate> delegate;
 
-- (void)loadValue:(id)value;
+- (void)loadValue:(id)value; // Deprecated
+- (void)loadValue:(id)value withTitle:(NSString *)title;
 
 - (void)didSelect;
 
@@ -30,6 +31,10 @@
 @end
 
 @interface ALCheckCell : ALValueCell
+
+@end
+
+@interface ALDisclosureIndicatedCell : ALValueCell
 
 @end
 
