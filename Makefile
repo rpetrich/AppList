@@ -10,7 +10,6 @@ libapplist_OBJC_FILES = ALApplicationList.x ALApplicationTableDataSource.m ALVal
 libapplist_CFLAGS = -I./
 libapplist_FRAMEWORKS = UIKit CoreGraphics QuartzCore
 libapplist_LIBRARIES = MobileGestalt
-libapplist_IPHONE_ARCHS = armv6 armv7 armv7s arm64
 
 BUNDLE_NAME = AppList
 AppList_OBJC_FILES = ALApplicationPreferenceViewController.m
@@ -22,11 +21,18 @@ AppList_INSTALL_PATH = /System/Library/PreferenceBundles
 
 TARGET_IPHONEOS_DEPLOYMENT_VERSION := 3.0
 
-IPHONE_ARCHS = armv6 armv7 arm64
 
+ifeq ($(FINALPACKAGE),1)
+IPHONE_ARCHS = armv6 armv7 arm64
+libapplist_IPHONE_ARCHS = armv6 armv7 armv7s arm64
 SDKVERSION_armv6 = 5.1
 INCLUDE_SDKVERSION_armv6 = 8.4
 THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_Legacy.app/Contents/Developer
+else
+IPHONE_ARCHS = armv7 arm64
+libapplist_IPHONE_ARCHS = armv7 armv7s arm64
+endif
+
 ADDITIONAL_CFLAGS = -Ipublic -Ioverlayheaders -I.
 
 include framework/makefiles/common.mk
