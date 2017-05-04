@@ -7,6 +7,7 @@
 
 #define ROCKETBOOTSTRAP_LOAD_DYNAMIC
 #import "LightMessaging/LightMessaging.h"
+#import "unfair_lock.h"
 
 #import "SpringBoard.h"
 
@@ -33,6 +34,8 @@ static LMConnection connection = {
 	MACH_PORT_NULL,
 	"applist.datasource"
 };
+static NSMutableDictionary *cachedIcons;
+static unfair_lock spinLock;
 
 __attribute__((visibility("hidden")))
 @interface ALApplicationListImpl : ALApplicationList
@@ -84,7 +87,6 @@ static BOOL IsIpad(void)
 			@throw [NSException exceptionWithName:NSInternalInconsistencyException reason:@"Only one instance of ALApplicationList is permitted at a time! Use [ALApplicationList sharedApplicationList] instead." userInfo:nil];
 		}
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-		cachedIcons = [[NSMutableDictionary alloc] init];
 		[[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(didReceiveMemoryWarning) name:UIApplicationDidReceiveMemoryWarningNotification object:nil];
 		[pool drain];
 		if ([UIImage respondsToSelector:@selector(_applicationIconImageForBundleIdentifier:format:scale:)]) {
@@ -98,12 +100,14 @@ static BOOL IsIpad(void)
 	return self;
 }
 
+#if 0
 - (void)dealloc
 {
 	[[NSNotificationCenter defaultCenter] removeObserver:self];
 	[cachedIcons release];
 	[super dealloc];
 }
+#endif
 
 - (NSInteger)applicationCount
 {
@@ -120,9 +124,11 @@ static BOOL IsIpad(void)
 
 - (void)didReceiveMemoryWarning
 {
-	OSSpinLockLock(&spinLock);
-	[cachedIcons removeAllObjects];
-	OSSpinLockUnlock(&spinLock);
+	unfair_lock_lock(&spinLock);
+	NSDictionary *oldCachedIcons = cachedIcons;
+	cachedIcons = nil;
+	unfair_lock_unlock(&spinLock);
+	[oldCachedIcons release];
 }
 
 - (NSDictionary *)applications
@@ -183,7 +189,7 @@ static NSArray *hiddenDisplayIdentifiers;
 
 - (NSArray *)_hiddenDisplayIdentifiers
 {
-	OSSpinLockLock(&spinLock);
+	unfair_lock_lock(&spinLock);
 	NSArray *result = hiddenDisplayIdentifiers;
 	if (!result) {
 		result = [[NSArray alloc] initWithObjects:
@@ -242,7 +248,7 @@ static NSArray *hiddenDisplayIdentifiers;
 			nil];
 		hiddenDisplayIdentifiers = result;
 	}
-	OSSpinLockUnlock(&spinLock);
+	unfair_lock_unlock(&spinLock);
 	return result;
 }
 
@@ -261,14 +267,14 @@ static NSArray *hiddenDisplayIdentifiers;
 	if (iconSize <= 0)
 		return NULL;
 	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", (CGFloat)iconSize];
-	OSSpinLockLock(&spinLock);
+	unfair_lock_lock(&spinLock);
 	CGImageRef result = (CGImageRef)[cachedIcons objectForKey:key];
 	if (result) {
 		result = CGImageRetain(result);
-		OSSpinLockUnlock(&spinLock);
+		unfair_lock_unlock(&spinLock);
 		return result;
 	}
-	OSSpinLockUnlock(&spinLock);
+	unfair_lock_unlock(&spinLock);
 	if (iconSize == ALApplicationIconSizeSmall) {
 		switch (supportedDirectAPI) {
 			case LADirectAPINone:
@@ -292,9 +298,12 @@ static NSArray *hiddenDisplayIdentifiers;
 	if (!result)
 		return NULL;
 skip:
-	OSSpinLockLock(&spinLock);
+	unfair_lock_lock(&spinLock);
+	if (!cachedIcons) {
+		cachedIcons = [[NSMutableDictionary alloc] init];
+	}
 	[cachedIcons setObject:(id)result forKey:key];
-	OSSpinLockUnlock(&spinLock);
+	unfair_lock_unlock(&spinLock);
 	NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:
 	                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
 	                          displayIdentifier, ALDisplayIdentifierKey,
@@ -325,9 +334,9 @@ skip:
 - (BOOL)hasCachedIconOfSize:(ALApplicationIconSize)iconSize forDisplayIdentifier:(NSString *)displayIdentifier
 {
 	NSString *key = [displayIdentifier stringByAppendingFormat:@"#%f", (CGFloat)iconSize];
-	OSSpinLockLock(&spinLock);
+	unfair_lock_lock(&spinLock);
 	id result = [cachedIcons objectForKey:key];
-	OSSpinLockUnlock(&spinLock);
+	unfair_lock_unlock(&spinLock);
 	return result != nil;
 }
 

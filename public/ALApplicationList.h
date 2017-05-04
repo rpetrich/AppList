@@ -8,11 +8,7 @@ enum {
 };
 typedef NSUInteger ALApplicationIconSize;
 
-@interface ALApplicationList : NSObject {
-@private
-	NSMutableDictionary *cachedIcons;
-	OSSpinLock spinLock;
-}
+@interface ALApplicationList : NSObject
 + (ALApplicationList *)sharedApplicationList;
 
 @property (nonatomic, readonly) NSDictionary *applications;

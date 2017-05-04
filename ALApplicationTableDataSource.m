@@ -1,6 +1,7 @@
 #import "ALApplicationTableDataSource.h"
 
 #import "ALApplicationList-private.h"
+#import "unfair_lock.h"
 
 #import <UIKit/UIKit.h>
 #import <CoreGraphics/CoreGraphics.h>
@@ -71,7 +72,7 @@ __attribute__((visibility("hidden")))
 @end
 
 static NSMutableArray *iconsToLoad;
-static OSSpinLock spinLock;
+static unfair_lock spinLock;
 static UIImage *defaultImage;
 
 @implementation ALApplicationTableDataSourceSection
@@ -86,21 +87,21 @@ static UIImage *defaultImage;
 + (void)loadIconsFromBackground
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-	OSSpinLockLock(&spinLock);
+	unfair_lock_lock(&spinLock);
 	ALApplicationList *appList = [ALApplicationList sharedApplicationList];
 	while ([iconsToLoad count]) {
 		NSDictionary *userInfo = [[iconsToLoad objectAtIndex:0] retain];
 		[iconsToLoad removeObjectAtIndex:0];
-		OSSpinLockUnlock(&spinLock);
+		unfair_lock_unlock(&spinLock);
 		CGImageRelease([appList copyIconOfSize:[[userInfo objectForKey:ALIconSizeKey] integerValue] forDisplayIdentifier:[userInfo objectForKey:ALDisplayIdentifierKey]]);
 		[userInfo release];
 		[pool drain];
 		pool = [[NSAutoreleasePool alloc] init];
-		OSSpinLockLock(&spinLock);
+		unfair_lock_lock(&spinLock);
 	}
 	[iconsToLoad release];
 	iconsToLoad = nil;
-	OSSpinLockUnlock(&spinLock);
+	unfair_lock_unlock(&spinLock);
 	[pool drain];
 }
 
@@ -299,14 +300,14 @@ static inline UITableViewCell *CellWithClassName(NSString *className, UITableVie
 			                          [NSNumber numberWithInteger:iconSize], ALIconSizeKey,
 			                          displayIdentifier, ALDisplayIdentifierKey,
 			                          nil];
-			OSSpinLockLock(&spinLock);
+			unfair_lock_lock(&spinLock);
 			if (iconsToLoad)
 				[iconsToLoad insertObject:userInfo atIndex:0];
 			else {
 				iconsToLoad = [[NSMutableArray alloc] initWithObjects:userInfo, nil];
 				[ALApplicationTableDataSourceSection performSelectorInBackground:@selector(loadIconsFromBackground) withObject:nil];
 			}
-			OSSpinLockUnlock(&spinLock);
+			unfair_lock_unlock(&spinLock);
 		}
 	} else {
 		cell.imageView.image = nil;
