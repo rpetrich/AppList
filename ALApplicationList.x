@@ -435,55 +435,6 @@ static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumera
 	return [[appController() allApplications] count];
 }
 
-- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
-{
-	NSArray *apps = [appController() allApplications];
-	if (predicate)
-		apps = [apps filteredArrayUsingPredicate:predicate];
-	return dictionaryOfApplicationsList(apps);
-}
-
-- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate onlyVisible:(BOOL)onlyVisible titleSortedIdentifiers:(NSArray **)outSortedByTitle
-{
-	NSArray *apps = [appController() allApplications];
-	if (predicate)
-		apps = [apps filteredArrayUsingPredicate:predicate];
-	NSMutableDictionary *result;
-	if (onlyVisible) {
-		if (kCFCoreFoundationVersionNumber > 1000) {
-			Class SBApplicationClass = %c(SBApplication);
-			if ([SBApplicationClass instancesRespondToSelector:@selector(tags)]) {
-				result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"not tags contains 'hidden'"]]);
-			} else if ([SBApplicationClass instancesRespondToSelector:@selector(info)] && [%c(SBApplicationInfo) instancesRespondToSelector:@selector(hasHiddenTag)]) {
-				result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"info.hasHiddenTag = FALSE"]]);
-			} else {
-				result = dictionaryOfApplicationsList(apps);
-			}
-		} else {
-			result = dictionaryOfApplicationsList(apps);
-			[result removeObjectsForKeys:[self _hiddenDisplayIdentifiers]];
-		}
-	} else {
-		result = dictionaryOfApplicationsList(apps);
-	}
-	if (outSortedByTitle) {
-		// Generate a sorted list of apps
-		*outSortedByTitle = [[result allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:result];
-	}
-	return result;
-}
-
-- (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
-{
-	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKeyPath:keyPath];
-}
-
-- (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
-{
-	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKey:keyPath];
-}
-
-
 static NSArray *hiddenDisplayIdentifiers;
 
 - (NSArray *)_hiddenDisplayIdentifiers
@@ -548,6 +499,55 @@ static NSArray *hiddenDisplayIdentifiers;
 	}
 	return result;
 }
+
+- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate
+{
+	NSArray *apps = [appController() allApplications];
+	if (predicate)
+		apps = [apps filteredArrayUsingPredicate:predicate];
+	return dictionaryOfApplicationsList(apps);
+}
+
+- (NSDictionary *)applicationsFilteredUsingPredicate:(NSPredicate *)predicate onlyVisible:(BOOL)onlyVisible titleSortedIdentifiers:(NSArray **)outSortedByTitle
+{
+	NSArray *apps = [appController() allApplications];
+	if (predicate)
+		apps = [apps filteredArrayUsingPredicate:predicate];
+	NSMutableDictionary *result;
+	if (onlyVisible) {
+		if (kCFCoreFoundationVersionNumber > 1000) {
+			Class SBApplicationClass = %c(SBApplication);
+			if ([SBApplicationClass instancesRespondToSelector:@selector(tags)]) {
+				result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"not tags contains 'hidden'"]]);
+			} else if ([SBApplicationClass instancesRespondToSelector:@selector(info)] && [%c(SBApplicationInfo) instancesRespondToSelector:@selector(hasHiddenTag)]) {
+				result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"info.hasHiddenTag = FALSE"]]);
+			} else {
+				result = dictionaryOfApplicationsList(apps);
+			}
+		} else {
+			result = dictionaryOfApplicationsList(apps);
+			[result removeObjectsForKeys:[self _hiddenDisplayIdentifiers]];
+		}
+	} else {
+		result = dictionaryOfApplicationsList(apps);
+	}
+	if (outSortedByTitle) {
+		// Generate a sorted list of apps
+		*outSortedByTitle = [[result allKeys] sortedArrayUsingFunction:DictionaryTextComparator context:result];
+	}
+	return result;
+}
+
+- (id)valueForKeyPath:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKeyPath:keyPath];
+}
+
+- (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
+{
+	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKey:keyPath];
+}
+
 
 - (BOOL)applicationWithDisplayIdentifierIsHidden:(NSString *)displayIdentifier
 {
