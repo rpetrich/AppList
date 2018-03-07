@@ -5,5 +5,5 @@
 	path = LightMessaging
 	url = git://github.com/rpetrich/LightMessaging.git
 [submodule "RocketBootstrap"]
-	path = RocketBootstrap
+	path = rocketbootstrap
 	url = git://github.com/rpetrich/RocketBootstrap.git
