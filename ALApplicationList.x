@@ -508,7 +508,14 @@ static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumera
 	NSMutableDictionary *result;
 	if (onlyVisible) {
 		if (kCFCoreFoundationVersionNumber > 1000) {
-			result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"not tags contains 'hidden'"]]);
+			Class SBApplicationClass = %c(SBApplication);
+			if ([SBApplicationClass instancesRespondToSelector:@selector(tags)]) {
+				result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"not tags contains 'hidden'"]]);
+			} else if ([SBApplicationClass instancesRespondToSelector:@selector(info)] && [%c(SBApplicationInfo) instancesRespondToSelector:@selector(hasHiddenTag)]) {
+				result = dictionaryOfApplicationsList([apps filteredArrayUsingPredicate:[NSPredicate predicateWithFormat:@"info.hasHiddenTag = FALSE"]]);
+			} else {
+				result = dictionaryOfApplicationsList(apps);
+			}
 		} else {
 			result = dictionaryOfApplicationsList(apps);
 			[result removeObjectsForKeys:[self _hiddenDisplayIdentifiers]];
