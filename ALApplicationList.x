@@ -27,7 +27,8 @@ enum {
 	ALMessageIdValueForKey,
 	ALMessageIdValueForKeyPath,
 	ALMessageIdGetApplicationCount,
-	ALMessageIdGetVisibleApplications
+	ALMessageIdGetVisibleApplications,
+	ALMessageIdApplicationIsHidden,
 };
 
 static LMConnection connection = {
@@ -185,76 +186,14 @@ static NSInteger DictionaryTextComparator(id a, id b, void *context)
 	return LMResponseConsumePropertyList(&buffer);
 }
 
-static NSArray *hiddenDisplayIdentifiers;
-
-- (NSArray *)_hiddenDisplayIdentifiers
-{
-	unfair_lock_lock(&spinLock);
-	NSArray *result = hiddenDisplayIdentifiers;
-	if (!result) {
-		result = [[NSArray alloc] initWithObjects:
-			@"com.apple.AdSheet",
-			@"com.apple.AdSheetPhone",
-			@"com.apple.AdSheetPad",
-			@"com.apple.DataActivation",
-			@"com.apple.DemoApp",
-			@"com.apple.Diagnostics",
-			@"com.apple.fieldtest",
-			@"com.apple.iosdiagnostics",
-			@"com.apple.iphoneos.iPodOut",
-			@"com.apple.TrustMe",
-			@"com.apple.WebSheet",
-			@"com.apple.springboard",
-			@"com.apple.purplebuddy",
-			@"com.apple.datadetectors.DDActionsService",
-			@"com.apple.FacebookAccountMigrationDialog",
-			@"com.apple.iad.iAdOptOut",
-			@"com.apple.ios.StoreKitUIService",
-			@"com.apple.TextInput.kbd",
-			@"com.apple.MailCompositionService",
-			@"com.apple.mobilesms.compose",
-			@"com.apple.quicklook.quicklookd",
-			@"com.apple.ShoeboxUIService",
-			@"com.apple.social.remoteui.SocialUIService",
-			@"com.apple.WebViewService",
-			@"com.apple.gamecenter.GameCenterUIService",
-			@"com.apple.appleaccount.AACredentialRecoveryDialog",
-			@"com.apple.CompassCalibrationViewService",
-			@"com.apple.WebContentFilter.remoteUI.WebContentAnalysisUI",
-			@"com.apple.PassbookUIService",
-			@"com.apple.uikit.PrintStatus",
-			@"com.apple.Copilot",
-			@"com.apple.MusicUIService",
-			@"com.apple.AccountAuthenticationDialog",
-			@"com.apple.MobileReplayer",
-			@"com.apple.SiriViewService",
-			@"com.apple.TencentWeiboAccountMigrationDialog",
-			// iOS 8
-			@"com.apple.AskPermissionUI",
-			@"com.apple.CoreAuthUI",
-			@"com.apple.family",
-			@"com.apple.mobileme.fmip1",
-			@"com.apple.GameController",
-			@"com.apple.HealthPrivacyService",
-			@"com.apple.InCallService",
-			@"com.apple.mobilesms.notification",
-			@"com.apple.PhotosViewService",
-			@"com.apple.PreBoard",
-			@"com.apple.PrintKit.Print-Center",
-			@"com.apple.share",
-			@"com.apple.SharedWebCredentialViewService",
-			@"com.apple.webapp",
-			@"com.apple.webapp1",
-			nil];
-		hiddenDisplayIdentifiers = result;
-	}
-	unfair_lock_unlock(&spinLock);
-	return result;
-}
-
 - (BOOL)applicationWithDisplayIdentifierIsHidden:(NSString *)displayIdentifier
 {
-	return [[self _hiddenDisplayIdentifiers] containsObject:displayIdentifier];
+	if (!displayIdentifier)
+		return NO;
+	LMResponseBuffer buffer;
+	if (LMConnectionSendTwoWayData(&connection, ALMessageIdApplicationIsHidden, (CFDataRef)[displayIdentifier dataUsingEncoding:NSUTF8StringEncoding], &buffer))
+		return NO;
+	return LMResponseConsumeInteger(&buffer) != 0;
 }
 
 - (void)postNotificationWithUserInfo:(NSDictionary *)userInfo
@@ -430,6 +369,10 @@ static void processMessage(SInt32 messageId, mach_port_t replyPort, CFDataRef da
 			LMSendIntegerReply(replyPort, [sharedApplicationList applicationCount]);
 			return;
 		}
+		case ALMessageIdApplicationIsHidden: {
+			LMSendIntegerReply(replyPort, [sharedApplicationList applicationWithDisplayIdentifierIsHidden:[[[NSString alloc] initWithData:(NSData *)data encoding:NSUTF8StringEncoding] autorelease]]);
+			return;
+		}
 	}
 	LMSendReply(replyPort, NULL, 0);
 }
@@ -538,6 +481,84 @@ static inline NSMutableDictionary *dictionaryOfApplicationsList(id<NSFastEnumera
 - (id)valueForKey:(NSString *)keyPath forDisplayIdentifier:(NSString *)displayIdentifier
 {
 	return [applicationWithDisplayIdentifier(displayIdentifier) valueForKey:keyPath];
+}
+
+
+static NSArray *hiddenDisplayIdentifiers;
+
+- (NSArray *)_hiddenDisplayIdentifiers
+{
+	NSArray *result = hiddenDisplayIdentifiers;
+	if (!result) {
+		result = [[NSArray alloc] initWithObjects:
+			@"com.apple.AdSheet",
+			@"com.apple.AdSheetPhone",
+			@"com.apple.AdSheetPad",
+			@"com.apple.DataActivation",
+			@"com.apple.DemoApp",
+			@"com.apple.Diagnostics",
+			@"com.apple.fieldtest",
+			@"com.apple.iosdiagnostics",
+			@"com.apple.iphoneos.iPodOut",
+			@"com.apple.TrustMe",
+			@"com.apple.WebSheet",
+			@"com.apple.springboard",
+			@"com.apple.purplebuddy",
+			@"com.apple.datadetectors.DDActionsService",
+			@"com.apple.FacebookAccountMigrationDialog",
+			@"com.apple.iad.iAdOptOut",
+			@"com.apple.ios.StoreKitUIService",
+			@"com.apple.TextInput.kbd",
+			@"com.apple.MailCompositionService",
+			@"com.apple.mobilesms.compose",
+			@"com.apple.quicklook.quicklookd",
+			@"com.apple.ShoeboxUIService",
+			@"com.apple.social.remoteui.SocialUIService",
+			@"com.apple.WebViewService",
+			@"com.apple.gamecenter.GameCenterUIService",
+			@"com.apple.appleaccount.AACredentialRecoveryDialog",
+			@"com.apple.CompassCalibrationViewService",
+			@"com.apple.WebContentFilter.remoteUI.WebContentAnalysisUI",
+			@"com.apple.PassbookUIService",
+			@"com.apple.uikit.PrintStatus",
+			@"com.apple.Copilot",
+			@"com.apple.MusicUIService",
+			@"com.apple.AccountAuthenticationDialog",
+			@"com.apple.MobileReplayer",
+			@"com.apple.SiriViewService",
+			@"com.apple.TencentWeiboAccountMigrationDialog",
+			// iOS 8
+			@"com.apple.AskPermissionUI",
+			@"com.apple.CoreAuthUI",
+			@"com.apple.family",
+			@"com.apple.mobileme.fmip1",
+			@"com.apple.GameController",
+			@"com.apple.HealthPrivacyService",
+			@"com.apple.InCallService",
+			@"com.apple.mobilesms.notification",
+			@"com.apple.PhotosViewService",
+			@"com.apple.PreBoard",
+			@"com.apple.PrintKit.Print-Center",
+			@"com.apple.share",
+			@"com.apple.SharedWebCredentialViewService",
+			@"com.apple.webapp",
+			@"com.apple.webapp1",
+			nil];
+		hiddenDisplayIdentifiers = result;
+	}
+	return result;
+}
+
+- (BOOL)applicationWithDisplayIdentifierIsHidden:(NSString *)displayIdentifier
+{
+	SBApplication *app = applicationWithDisplayIdentifier(displayIdentifier);
+	if ([app respondsToSelector:@selector(tags)]) {
+		return ![app.tags containsObject:@"hidden"];
+	}
+	if ([app respondsToSelector:@selector(info)]) {
+		return [[app info] hasHiddenTag];
+	}
+	return [[self _hiddenDisplayIdentifiers] containsObject:displayIdentifier];
 }
 
 static SBIconModel *homescreenIconModel(void)

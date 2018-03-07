@@ -36,6 +36,15 @@
 @property (nonatomic, readonly) NSString *displayName;
 - (NSString *)pathForIcon;
 - (NSString *)pathForSmallIcon;
+- (NSArray *)tags;
+@end
+
+@interface SBApplicationInfo : NSObject
+- (BOOL)hasHiddenTag;
+@end
+
+@interface SBApplication (iOS10)
+- (SBApplicationInfo *)info;
 @end
 
 @interface SBApplicationController : NSObject
