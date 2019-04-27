@@ -22,12 +22,11 @@ AppList_INSTALL_PATH = /System/Library/PreferenceBundles
 AppList_USE_MODULES = 0
 
 
-LEGACY_XCODE_PATH ?= /Applications/Xcode_Legacy.app/Contents/Developer
-CLASSIC_XCODE_PATH ?= /Volumes/Xcode/Xcode.app/Contents/Developer
-
-ifneq ($(wildcard $(LEGACY_XCODE_PATH)/*),)
-THEOS_PLATFORM_SDK_ROOT_armv6 = $(LEGACY_XCODE_PATH)
-THEOS_PLATFORM_SDK_ROOT_armv7 = $(CLASSIC_XCODE_PATH)
+THEOS_PLATFORM_SDK_ROOT_armv6 = /Applications/Xcode_Legacy.app/Contents/Developer
+ifneq ($(wildcard $(THEOS_PLATFORM_SDK_ROOT_armv6)/*),)
+THEOS_PLATFORM_SDK_ROOT_armv7 = /Volumes/Xcode/Xcode.app/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_armv7s = /Volumes/Xcode/Xcode.app/Contents/Developer
+THEOS_PLATFORM_SDK_ROOT_arm64 = /Volumes/Xcode_9.4.1/Xcode.app/Contents/Developer
 SDKVERSION_armv6 = 5.1
 INCLUDE_SDKVERSION_armv6 = latest
 TARGET_IPHONEOS_DEPLOYMENT_VERSION = 7.0
@@ -35,12 +34,13 @@ TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv6 = 3.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv7 = 3.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_armv7s = 6.0
 TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64 = 7.0
-IPHONE_ARCHS = armv6 armv7 arm64
-libapplist_IPHONE_ARCHS = armv6 armv7 armv7s arm64
+TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64e = 8.4
+IPHONE_ARCHS = armv6 armv7 arm64 arm64e
+libapplist_IPHONE_ARCHS = armv6 armv7 armv7s arm64 arm64e
 else
-TARGET_IPHONEOS_DEPLOYMENT_VERSION = 7.0
-IPHONE_ARCHS = armv7 arm64
-libapplist_IPHONE_ARCHS = armv7 armv7s arm64
+TARGET_IPHONEOS_DEPLOYMENT_VERSION = 8.4
+IPHONE_ARCHS = armv7 arm64 arm64e
+libapplist_IPHONE_ARCHS = armv7 armv7s arm64 arm64e
 ifeq ($(FINALPACKAGE),1)
 $(error Building final package requires a legacy Xcode install!)
 endif
