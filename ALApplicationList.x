@@ -494,6 +494,12 @@ static NSArray *hiddenDisplayIdentifiers;
 			@"com.apple.SharedWebCredentialViewService",
 			@"com.apple.webapp",
 			@"com.apple.webapp1",
+			// iOS 13
+			@"com.apple.dt.XcodePreviews",
+			@"com.apple.sidecar",
+			@"com.apple.siri",
+			// iOS 14
+			@"com.apple.Magnifier",
 			nil];
 		hiddenDisplayIdentifiers = result;
 	}
